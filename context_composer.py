@@ -6,66 +6,91 @@ berdasarkan ConversationState saat ini. Tidak dump semua memory —
 hanya yang relevan dengan topik + frame saat ini.
 
 Output: string context yang siap dimasukkan ke Soul prompt.
+
+--- PATCH: integrasi character_memory.py ---
+Ditambahkan blok "character_self" yang menyisipkan profil diri karakter
+(tanggal lahir, keinginan, hobi, dll) ke context, supaya kalau user
+bertanya "apa keinginanmu?" AI otomatis punya datanya tanpa mengarang.
+Blok ini ikut di mode lite/normal/deep (identitas dasar sering ditanya),
+dan SELALU ikut kalau frame == "IDENTITY" (kalau frame ini ada di
+ConversationState-mu; kalau belum ada, boleh diabaikan/dihapus baris itu).
 """
+
 from __future__ import annotations
+
 from typing import Dict, Optional
 
 from conversation_state import ConversationState, complexity_to_mode
-import working_memory      as wm_mod
+import working_memory as wm_mod
 import relationship_memory as rm_mod
-import knowledge_memory    as km_mod
-import long_memory         as lm_mod
-
+import knowledge_memory as km_mod
+import long_memory as lm_mod
+import character_memory as cmem_mod  # PATCH
 
 # Context budget per mode (dalam chars, approx):
 _BUDGET: Dict[str, int] = {
-    "nano":   500,
-    "lite":   800,
+    "nano": 500,
+    "lite": 800,
     "normal": 1500,
-    "deep":   3000,
+    "deep": 3000,
 }
 
 
 def compose(
-    user_id:     str,
-    char_id:     str,
-    state:       ConversationState,
+    user_id: str,
+    char_id: str,
+    state: ConversationState,
     tool_output: str = "",
     override_mode: Optional[str] = None,
 ) -> Dict:
     """
     Build context dict berdasarkan ConversationState.
+
     Return:
-      {
+    {
         "mode": "nano"|"lite"|"normal"|"deep",
         "max_tokens": int,
         "working_memory": str,
         "relationship": str,
         "knowledge": str,
         "long_memory": str,
+        "character_self": str,   # PATCH: profil diri karakter (wants, birthday, dll)
         "tool_output": str,
-        "full_context": str,   # gabungan siap pakai
-      }
+        "full_context": str,     # gabungan siap pakai
+    }
     """
-    mode   = override_mode or complexity_to_mode(state.complexity)
+    mode = override_mode or complexity_to_mode(state.complexity)
     budget = _BUDGET.get(mode, 1500)
+    parts = []
 
-    parts  = []
     result = {
-        "mode":           mode,
-        "max_tokens":     _mode_to_max_tokens(mode),
+        "mode": mode,
+        "max_tokens": _mode_to_max_tokens(mode),
         "working_memory": "",
-        "relationship":   "",
-        "knowledge":      "",
-        "long_memory":    "",
-        "tool_output":    "",
-        "full_context":   "",
+        "relationship": "",
+        "knowledge": "",
+        "long_memory": "",
+        "character_self": "",  # PATCH
+        "tool_output": "",
+        "full_context": "",
     }
 
     # ── Tool output (selalu masuk jika ada) ──────────────────────────────────
     if tool_output:
         result["tool_output"] = tool_output
         parts.append(f"[Data]\n{tool_output[:400]}")
+
+    # ── Character Self Memory ────────────────────────────────────────────── PATCH
+    # Identitas dasar karakter (nama, tanggal lahir, keinginan, hobi, dll).
+    # Selalu ikut di lite+ karena sering ditanya user ("kamu suka apa?",
+    # "apa keinginanmu?", dst), dan murah (budget kecil).
+    frame = getattr(state, "frame", "")
+    if mode in ("lite", "normal", "deep") or frame == "IDENTITY":
+        cm = cmem_mod.load(char_id)
+        cm_str = cm.summary_for_context()
+        if cm_str != "(belum ada data karakter)":
+            result["character_self"] = cm_str
+            parts.append(cm_str)
 
     # ── Working Memory ────────────────────────────────────────────────────────
     # Selalu masuk kecuali nano (tidak ada context)
@@ -89,7 +114,7 @@ def compose(
     # Masuk di normal+ ATAU jika frame adalah TASK/KNOWLEDGE/FOLLOW_UP
     if mode in ("normal", "deep") or state.frame in ("TASK", "KNOWLEDGE", "FOLLOW_UP"):
         ks = km_mod.load(user_id)
-        km_str = ks.summary_for_context(topic_hint=state.topic, max_items=5 if mode=="deep" else 3)
+        km_str = ks.summary_for_context(topic_hint=state.topic, max_items=5 if mode == "deep" else 3)
         if km_str != "(belum ada knowledge)":
             result["knowledge"] = km_str
             parts.append(km_str)
@@ -113,7 +138,6 @@ def compose(
     if len(full) > budget:
         full = full[:budget] + "\n...(truncated)"
     result["full_context"] = full
-
     return result
 
 
@@ -125,6 +149,7 @@ def compose_summary_line(ctx: Dict) -> str:
     """Satu baris untuk debug log."""
     return (
         f"mode={ctx['mode']} max_tok={ctx['max_tokens']} "
+        f"char={'✓' if ctx['character_self'] else '✗'} "  # PATCH
         f"wm={'✓' if ctx['working_memory'] else '✗'} "
         f"rel={'✓' if ctx['relationship'] else '✗'} "
         f"know={'✓' if ctx['knowledge'] else '✗'} "

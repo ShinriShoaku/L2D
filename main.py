@@ -18,7 +18,7 @@ import re
 import time
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
-
+import character_memory
 from openai import OpenAI
 
 from config import (
@@ -2645,6 +2645,10 @@ def main():
     open_settings_async()
 
     mgr   = CharacterManager()
+    generated = character_memory.ensure_all(mgr)
+    if generated:
+        print(f"[CHAR MEMORY] Auto-generated bin untuk: {generated}")
+        
     chars = mgr.list_characters()
     print(f"Available: {chars}")
     if not chars:
