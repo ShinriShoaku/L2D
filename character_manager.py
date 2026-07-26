@@ -2,51 +2,22 @@
 """
 character_manager.py — Multi-character support.
 
-Supported folder structures (auto-detected):
-    character/          <- singular (legacy / your current structure)
-        liana/
-            character.json
-            banter.json
-            scenarios.json
-    characters/          <- plural
-        liana/
-            character.json
-            ...
-
-Usage:
-    mgr = CharacterManager()
-    mgr.list_characters()   # ['alfa', 'liana']
-    mgr.load("liana")       # loads all 3 files + char_memory
-    mgr.character            # dict
-    mgr.banter                # list
-    mgr.scenarios              # dict
-    mgr.banter_path             # path string (pass to BanterManager)
-    mgr.scenario_path            # path string
-    mgr.char_memory               # CharacterMemory (identitas/keinginan karakter)
-
---- PATCH: integrasi character_memory.py ---
+--- PATCH: integrasi character_memory.py (per-character bin) ---
 Setiap kali load(name) dipanggil, modul ini otomatis:
-  1. Load character.json + banter.json + scenario(s).json (seperti sebelumnya)
-  2. Load / auto-generate CharacterMemory (state/character_memory.bin) untuk
-     karakter tsb via character_memory.load(name, character_json).
-     Kalau bin belum ada -> otomatis di-seed dari character.json.
+  1. Load character.json + banter.json + scenario(s).json
+  2. Load / auto-generate CharacterMemory di FOLDER KARAKTER itu sendiri:
+     characters/<nama>/character_memory.bin
 """
 
 import json
 import os
 from typing import Dict, List, Optional
 
-import character_memory  # PATCH: modul memory identitas/keinginan karakter
+import character_memory
 
 _BASE = os.path.dirname(os.path.abspath(__file__))
 
-
 def _find_character_dir() -> str:
-    """
-    Auto-detect which folder holds the characters.
-    Priority: character/ -> characters/ -> fallback create characters/
-    Validates by checking for at least one sub-folder with character.json.
-    """
     for candidate in ("character", "characters"):
         path = os.path.join(_BASE, candidate)
         if not os.path.isdir(path):
@@ -58,13 +29,9 @@ def _find_character_dir() -> str:
             ):
                 print(f"[CHAR] Auto-detected folder: {path}")
                 return path
-    # Fallback
     return os.path.join(_BASE, "characters")
 
-
 class CharacterManager:
-    """Load and expose one character at a time."""
-
     def __init__(self, characters_dir: str = None):
         self.dir = characters_dir if characters_dir else _find_character_dir()
         os.makedirs(self.dir, exist_ok=True)
@@ -72,13 +39,10 @@ class CharacterManager:
         self._character: Dict = {}
         self._banter: List = []
         self._scenarios: Dict = {}
-        self._char_memory: Optional["character_memory.CharacterMemory"] = None  # PATCH
+        self._char_memory: Optional["character_memory.CharacterMemory"] = None
+        self._char_dir: Optional[str] = None
 
-    # -------------------------------------------------------------------------
-    # Discovery
-    # -------------------------------------------------------------------------
     def list_characters(self) -> List[str]:
-        """Return sorted list of character names (directories with character.json)."""
         if not os.path.isdir(self.dir):
             return []
         return sorted(
@@ -87,11 +51,7 @@ class CharacterManager:
             and os.path.isfile(os.path.join(self.dir, d, "character.json"))
         )
 
-    # -------------------------------------------------------------------------
-    # Load
-    # -------------------------------------------------------------------------
     def load(self, character_name: str) -> bool:
-        """Load character.json + banter.json + scenario(s).json + char_memory for given name."""
         char_dir = os.path.join(self.dir, character_name)
         char_file = os.path.join(char_dir, "character.json")
         if not os.path.isfile(char_file):
@@ -105,7 +65,6 @@ class CharacterManager:
             print(f"[CHAR] Load error ({char_file}): {e}")
             return False
 
-        # Support both scenarios.json and scenario.json
         scenario_file = os.path.join(char_dir, "scenarios.json")
         if not os.path.isfile(scenario_file):
             scenario_file = os.path.join(char_dir, "scenario.json")
@@ -113,9 +72,14 @@ class CharacterManager:
         self._banter = self._load_json(os.path.join(char_dir, "banter.json"), [])
         self._scenarios = self._load_json(scenario_file, {})
         self._name = character_name
+        self._char_dir = char_dir
 
-        # PATCH: load / auto-generate character memory (bin) untuk karakter ini
-        self._char_memory = character_memory.load(character_name, self._character)
+        # PATCH: load / auto-generate character memory di FOLDER KARAKTER
+        self._char_memory = character_memory.load(
+            character_name,
+            self._character,
+            char_dir=char_dir,
+        )
 
         n_banter = len(self._banter)
         n_scenarios = sum(
@@ -123,18 +87,19 @@ class CharacterManager:
             for v in self._scenarios.values()
         ) if self._scenarios else 0
 
+        mem_path = os.path.join(char_dir, "character_memory.bin")
+        has_mem = os.path.isfile(mem_path)
+
         print(
             f"[CHAR] '{character_name}' loaded | "
             f"folder={self.dir} | "
             f"banter={n_banter} | scenarios={n_scenarios} | "
             f"anims={self.get_animations()} | "
-            f"memory_wants={len(self._char_memory.wants)}"  # PATCH: log singkat
+            f"memory_wants={len(self._char_memory.wants)} | "
+            f"mem_file={'ada' if has_mem else 'baru dibuat'}"
         )
         return True
 
-    # -------------------------------------------------------------------------
-    # Properties
-    # -------------------------------------------------------------------------
     @property
     def active(self) -> Optional[str]:
         return self._name
@@ -154,13 +119,16 @@ class CharacterManager:
         return self._scenarios
 
     @property
-    def char_memory(self) -> "character_memory.CharacterMemory":  # PATCH
-        """Memory identitas/keinginan karakter aktif (tanggal lahir, wants, dll)."""
+    def char_memory(self) -> "character_memory.CharacterMemory":
         if self._char_memory is None:
             raise RuntimeError("No character loaded — call load() first.")
         return self._char_memory
 
-    # -- File paths (for BanterManager) ---------------------------------------
+    @property
+    def char_dir(self) -> Optional[str]:
+        """Folder path karakter aktif (characters/<nama>/)."""
+        return self._char_dir
+
     @property
     def banter_path(self) -> str:
         if not self._name:
@@ -177,35 +145,26 @@ class CharacterManager:
                 return path
         return os.path.join(self.dir, self._name, "scenarios.json")
 
-    # -------------------------------------------------------------------------
-    # Helpers
-    # -------------------------------------------------------------------------
     def get_animations(self) -> List[str]:
-        """Return allowed animation/expression names for this character."""
         return self._character.get(
             "animations", ["smile", "angry", "shy", "default"]
         )
 
     def get_default_expression(self) -> str:
-        """First animation as safe fallback."""
         anims = self.get_animations()
         return anims[0] if anims else "default"
 
-    # -------------------------------------------------------------------------
-    # Static utils
-    # -------------------------------------------------------------------------
     @staticmethod
     def _load_json(path: str, default):
         if os.path.isfile(path):
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     content = f.read()
-                # Simple comment stripping: strip lines starting with // or #
-                cleaned = "\n".join(
-                    line for line in content.splitlines()
-                    if not line.strip().startswith("//") and not line.strip().startswith("#")
-                )
-                return json.loads(cleaned)
+                    cleaned = "\n".join(
+                        line for line in content.splitlines()
+                        if not line.strip().startswith("//") and not line.strip().startswith("#")
+                    )
+                    return json.loads(cleaned)
             except Exception as e:
                 print(f"[CHAR] Load {os.path.basename(path)}: {e}")
         return default

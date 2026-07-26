@@ -1,43 +1,13 @@
 """
 character_memory.py — Character Self-Memory (Identitas & Keinginan Karakter).
 
-Berbeda dari long_memory.py / relationship_memory.py (yang menyimpan data
-tentang USER), modul ini menyimpan data tentang KARAKTER itu sendiri:
-tanggal lahir, keinginan, hobi, kepribadian, dst. Satu file bin menyimpan
-memory untuk SEMUA karakter, di-index per character_id (nama folder di
-character/<nama>/).
-
-SKEMA BEBAS (tidak fixed):
-Data identitas karakter disimpan di CharacterMemory.attributes — sebuah
-dict bebas, BUKAN kolom tetap. Artinya field APA SAJA boleh ada di sana
-(full_name, birthday, likes, tapi juga "problem_today", "makanan_favorit",
-"kebiasaan_unik", dsb) dan tiap karakter boleh punya set field yang beda-
-beda. Field bisa ditambah/dikurangi bebas kapan saja lewat set_field()/
-remove_field(), atau otomatis ditambah oleh AI (lihat generate_via_ai()).
-- wants        : keinginan / cita-cita karakter (list terpisah, bisa prioritas)
-- custom_facts : catatan bebas tambahan (list terpisah, append-only)
-
-Auto-generate: saat CharacterManager.load(nama) dipanggil pertama kali dan
-belum ada data character_memory untuk karakter tsb, modul ini otomatis
-membuat entry baru — defaultnya via AI (generate_via_ai): persona karakter
-(sudah dibersihkan dari bagian teknis prompt, lihat _extract_persona_text)
-dikirim ke local model, lalu model itu sendiri yang mengarang data
-identitasnya secara bebas (tidak dibatasi field baku). Fallback ke seed
-dari character.json kalau AI gagal/belum jalan.
-
-Persist: state/character_memory.bin — satu file untuk semua karakter,
-format sama seperti long_memory.py (header magic + index + payload
-msgpack/pickle) supaya konsisten dengan modul memory lain di project ini.
-
-DEBUG PROMPT:
-Untuk lihat system/user prompt PERSIS yang dikirim ke model setiap kali
-generate_via_ai() jalan (bukan cuma pas testing manual via CLI), aktifkan
-salah satu dari:
-  1. set config.DEBUG = True (dipakai otomatis di seluruh project ini), ATAU
-  2. set environment variable CHARMEM_DEBUG=1 (tidak perlu ubah config.py
-     sama sekali, cocok buat debug cepat), ATAU
-  3. lewat argumen eksplisit debug=True ke load()/ensure_all()/regenerate().
-Log ditulis ke console DAN ke state/character_memory_debug.log.
+PERUBAHAN BARU (per-character bin):
+- Tiap karakter sekarang punya file bin SENDIRI di folder karakternya
+  masing-masing: characters/<nama>/character_memory.bin
+- Kalau dipanggil tanpa char_dir (backward compat), tetap pakai
+  state/character_memory.bin (multi-karakter lama).
+- Migrasi otomatis: kalau load dari char_dir dan file belum ada,
+  tapi ada data di file global lama, data dipindahkan ke file karakter.
 """
 
 from __future__ import annotations
@@ -72,13 +42,7 @@ _MAX_FACTS = 100
 _DEBUG_LOG_FILE = "character_memory_debug.log"
 _DBG_SEP = "═" * 68
 
-
 # ─── Debug: lihat prompt asli tiap kali generate jalan ───────────────────────
-#
-# Bukan cuma pas CLI manual — resolusi debug ini dipakai oleh load(),
-# ensure_all(), regenerate() juga, jadi ke-trigger otomatis di jalur normal
-# app (mis. CharacterManager.load() -> character_memory.load()) selama
-# salah satu switch di bawah aktif.
 
 def _resolve_debug(debug: Optional[bool]) -> bool:
     """Tentukan apakah debug logging aktif. Prioritas: argumen eksplisit ->
@@ -89,17 +53,15 @@ def _resolve_debug(debug: Optional[bool]) -> bool:
     if env is not None:
         return env.strip().lower() in ("1", "true", "yes", "on")
     try:
-        import config  # lazy import, modul ini tetap jalan tanpa config.py
+        import config
         return bool(getattr(config, "DEBUG", False))
     except Exception:
         return False
-
 
 def _debug_log_path() -> str:
     d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, _DEBUG_LOG_FILE)
-
 
 def _dbg_write(text: str):
     print(text)
@@ -109,7 +71,6 @@ def _dbg_write(text: str):
     except Exception:
         pass
 
-
 def _dbg_log_prompt(character_id: str, system: str, user: str):
     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     _dbg_write(f"\n{_DBG_SEP}\n[CHAR MEMORY][{ts}] generate_via_ai → '{character_id}'\n{_DBG_SEP}")
@@ -118,27 +79,15 @@ def _dbg_log_prompt(character_id: str, system: str, user: str):
     _dbg_write("── USER PROMPT / PERSONA (sudah dibersihkan dari bagian teknis) " + "─" * 3)
     _dbg_write(user)
 
-
 def _dbg_log_raw_response(raw: str):
     _dbg_write("── RAW RESPONSE dari model " + "─" * 40)
     _dbg_write(raw)
-
 
 def _dbg_log_result(cm: "CharacterMemory"):
     _dbg_write("── HASIL AKHIR (disimpan ke bin) " + "─" * 34)
     _dbg_write(json.dumps(cm.to_dict(), ensure_ascii=False, indent=2))
 
-
 # ─── Pembersih persona: buang bagian teknis dari blok prompts.soul_* ─────────
-#
-# Blok prompts.soul_system/soul_final_system di character.json berisi
-# beberapa section bertanda "[NAMA SECTION]". Cuma section identitas paling
-# awal (mis. "[SYSTEM CORE DIRECTIVE]" / "[SYSTEM CORE]") yang relevan buat
-# generate profil (isinya IDENTITAS/KEPRIBADIAN/GAYA BICARA). Section
-# sesudahnya ("[LOGIKA KONDISIONAL & PERILAKU]", "[BATASAN OUTPUT ...]",
-# "[FORMAT INPUT PROMPT]", dst) murni instruksi teknis untuk runtime chat,
-# BUKAN deskripsi karakter — kalau ikut terkirim ke model saat generate
-# profil, cuma bikin prompt kotor dan bisa nurunin kualitas hasil.
 
 _TECHNICAL_HEADER_KEYWORDS = (
     "LOGIKA", "KONDISIONAL", "PERILAKU", "BATASAN", "FORMAT INPUT",
@@ -150,7 +99,6 @@ _IDENTITY_HEADER_KEYWORDS = ("SYSTEM CORE", "IDENTITAS", "PERSONA", "KEPRIBADIAN
 
 _SECTION_HEADER_RE = re.compile(r'^\[([^\]]+)\]\s*$', re.MULTILINE)
 
-
 def _strip_technical_sections(text: str) -> str:
     """Buang section prompt yang teknis (logika kondisional, batasan output,
     format input, dst), sisakan cuma section identitas/kepribadian."""
@@ -158,12 +106,9 @@ def _strip_technical_sections(text: str) -> str:
         return ""
     matches = list(_SECTION_HEADER_RE.finditer(text))
     if not matches:
-        # Tidak ada section bertanda [...] sama sekali -> anggap semua teks
-        # relevan (kemungkinan format prompt custom di luar pola project ini).
         return text.strip()
 
     kept: List[str] = []
-    # Teks sebelum header pertama (jarang ada, tapi jaga-jaga).
     preamble = text[:matches[0].start()].strip()
     if preamble:
         kept.append(preamble)
@@ -177,33 +122,39 @@ def _strip_technical_sections(text: str) -> str:
         is_technical = any(kw in header for kw in _TECHNICAL_HEADER_KEYWORDS)
         is_identity = any(kw in header for kw in _IDENTITY_HEADER_KEYWORDS)
 
-        # Section pertama selalu dianggap identitas (mengikuti pola project
-        # ini: [SYSTEM CORE DIRECTIVE]/[SYSTEM CORE] selalu di paling awal),
-        # kecuali headernya sendiri sudah jelas-jelas teknis.
         if i == 0 and not is_technical:
             kept.append(block)
         elif is_identity and not is_technical:
             kept.append(block)
-        # sisanya (teknis, atau tidak dikenali & bukan section pertama) dibuang
 
     cleaned = "\n\n".join(kept).strip()
-    return cleaned or text.strip()  # safety net: jangan sampai balik string kosong
+    return cleaned or text.strip()
 
+# ─── Path resolution (global vs per-character) ─────────────────────────────
 
-def _path() -> str:
+def _global_path() -> str:
+    """Path file bin lama (multi-karakter, backward compat)."""
     d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, _FILE)
 
+def _char_path(character_id: str, char_dir: Optional[str] = None) -> str:
+    """Path file bin untuk satu karakter.
+    Kalau char_dir diberikan: characters/<nama>/character_memory.bin
+    Kalau tidak: fallback ke state/character_memory.bin (global, lama).
+    """
+    if char_dir:
+        return os.path.join(char_dir, _FILE)
+    return _global_path()
 
-# ─── Low-level binary read/write (pola sama dengan long_memory.py) ───────────
+# ─── Low-level binary read/write ─────────────────────────────────────────────
 
-def _read_all() -> Dict[str, Dict]:
-    p = _path()
-    if not os.path.exists(p):
+def _read_file(path: str) -> Dict[str, Dict]:
+    """Baca file bin (bisa multi-record). Balik dict {character_id: record}."""
+    if not os.path.exists(path):
         return {}
     try:
-        with open(p, "rb") as f:
+        with open(path, "rb") as f:
             hdr = f.read(_H_SZ)
             if len(hdr) < _H_SZ:
                 return {}
@@ -228,9 +179,8 @@ def _read_all() -> Dict[str, Dict]:
     except Exception:
         return {}
 
-
-def _write_all(data: Dict[str, Dict]):
-    p = _path()
+def _write_file(path: str, data: Dict[str, Dict]):
+    """Tulis dict {character_id: record} ke file bin."""
     items = list(data.values())
     payloads = [None] * len(items)
     for i, r in enumerate(items):
@@ -246,7 +196,10 @@ def _write_all(data: Dict[str, Dict]):
         offs.append(cur)
         cur += _L_SZ + len(p2)
     try:
-        with open(p, "wb") as f:
+        d = os.path.dirname(path)
+        if d:
+            os.makedirs(d, exist_ok=True)
+        with open(path, "wb") as f:
             f.write(struct.pack(_H_FMT, _MAGIC, count))
             for o in offs:
                 f.write(struct.pack(_IX_FMT, o))
@@ -256,16 +209,49 @@ def _write_all(data: Dict[str, Dict]):
     except Exception:
         pass
 
+def _read_char(character_id: str, char_dir: Optional[str] = None) -> Optional[Dict]:
+    """Baca record satu karakter dari file bin-nya (global atau per-character)."""
+    path = _char_path(character_id, char_dir)
+    data = _read_file(path)
+    return data.get(character_id)
+
+def _write_char(cm: "CharacterMemory", char_dir: Optional[str] = None):
+    """Tulis record satu karakter ke file bin-nya."""
+    path = _char_path(cm.character_id, char_dir)
+    data = _read_file(path)
+    data[cm.character_id] = cm.to_dict()
+    _write_file(path, data)
+
+# ─── Migrasi otomatis dari file global lama ke per-character ─────────────────
+
+def _migrate_from_global(character_id: str, char_dir: Optional[str] = None) -> bool:
+    """Kalau file per-character belum ada tapi ada data di file global lama,
+    pindahkan data karakter tsb ke file per-character-nya. Return True kalau
+    berhasil dimigrasi."""
+    if not char_dir:
+        return False
+    char_path = _char_path(character_id, char_dir)
+    if os.path.exists(char_path):
+        return False
+    global_path = _global_path()
+    if not os.path.exists(global_path):
+        return False
+    global_data = _read_file(global_path)
+    if character_id not in global_data:
+        return False
+    _write_file(char_path, {character_id: global_data[character_id]})
+    del global_data[character_id]
+    if global_data:
+        _write_file(global_path, global_data)
+    else:
+        try:
+            os.remove(global_path)
+        except Exception:
+            pass
+    print(f"[CHAR MEMORY] Migrasi otomatis: '{character_id}' dipindahkan dari state/{_FILE} ke {char_dir}/{_FILE}")
+    return True
 
 # ─── Data model ────────────────────────────────────────────────────────────
-#
-# SKEMA BEBAS: identitas karakter (full_name, birthday, zodiac, likes, dst —
-# TERMASUK field baru apa pun yang tidak ada di contoh ini) semuanya hidup
-# di `attributes`, sebuah dict polos. Tidak ada whitelist field yang
-# di-hardcode di sini — mau nambah "problem_today", "kutipan_andalan",
-# "kebiasaan_unik", atau apa pun, tinggal attributes[key] = value.
-# `wants` dan `custom_facts` tetap list terpisah karena punya mekanisme
-# sendiri (priority, dedup, cap jumlah, urutan waktu).
 
 _LABELS = {
     "full_name": "Nama",
@@ -281,13 +267,10 @@ _LABELS = {
 }
 _SUMMARY_PRIORITY = ["full_name", "birthday", "zodiac", "age", "personality", "likes", "dislikes", "hobbies"]
 
-# Field lama (format bin versi sebelumnya, sebelum jadi `attributes` bebas)
-# — dipakai cuma buat migrasi otomatis data lama, bukan whitelist baru.
 _LEGACY_TOP_LEVEL_KEYS = (
     "full_name", "birthday", "zodiac", "age", "likes", "dislikes",
     "hobbies", "personality", "backstory", "fears",
 )
-
 
 def _fmt_value(v: Any, max_len: int = 180) -> str:
     if isinstance(v, list):
@@ -298,17 +281,14 @@ def _fmt_value(v: Any, max_len: int = 180) -> str:
         s = str(v)
     return s if len(s) <= max_len else s[:max_len].rstrip() + "…"
 
-
 @dataclass
 class CharacterMemory:
     character_id: str = ""
-    attributes: Dict[str, Any] = field(default_factory=dict)  # bebas, tidak fixed
-    wants: List[Dict] = field(default_factory=list)      # [{text, priority, ts}]
-    custom_facts: List[Dict] = field(default_factory=list)  # [{text, ts}]
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    wants: List[Dict] = field(default_factory=list)
+    custom_facts: List[Dict] = field(default_factory=list)
     created_ts: int = 0
     updated_ts: int = 0
-
-    # ── Mutators ──────────────────────────────────────────────────────────
 
     def add_want(self, text: str, priority: float = 0.5):
         text = text.strip()
@@ -331,7 +311,6 @@ class CharacterMemory:
             self.custom_facts = self.custom_facts[-_MAX_FACTS:]
 
     def set_field(self, key: str, value: Any):
-        """Tambah/timpa 1 field identitas bebas apa pun (bukan whitelist)."""
         key = key.strip()
         if not key:
             return
@@ -341,7 +320,6 @@ class CharacterMemory:
             self.attributes[key] = value
 
     def remove_field(self, key: str):
-        """Hapus 1 field identitas — datanya memang boleh berkurang bebas."""
         self.attributes.pop(key, None)
 
     def get_field(self, key: str, default: Any = None) -> Any:
@@ -350,17 +328,11 @@ class CharacterMemory:
     def field_keys(self) -> List[str]:
         return list(self.attributes.keys())
 
-    # ── Query untuk dijawab AI ───────────────────────────────────────────
-
     def get_wants(self, n: int = 5) -> List[str]:
         sorted_w = sorted(self.wants, key=lambda x: x.get("priority", 0), reverse=True)
         return [w["text"] for w in sorted_w[:n]]
 
     def summary_for_context(self) -> str:
-        """Dipanggil context_composer.py untuk inject profil karakter ke prompt.
-        Field yang ditampilkan MENGIKUTI apa pun yang ada di attributes —
-        tidak dibatasi ke daftar field baku, jadi karakter A dan B bisa
-        menghasilkan baris yang beda-beda tergantung data yang mereka punya."""
         if not self.attributes and not self.wants and not self.custom_facts:
             return "(belum ada data karakter)"
 
@@ -395,8 +367,6 @@ class CharacterMemory:
         if isinstance(d.get("attributes"), dict):
             cm.attributes = dict(d["attributes"])
         else:
-            # Migrasi otomatis dari format bin lama (kolom fixed) ke
-            # attributes bebas, supaya data lama tidak hilang.
             migrated = {}
             for k in _LEGACY_TOP_LEVEL_KEYS:
                 v = d.get(k)
@@ -405,43 +375,8 @@ class CharacterMemory:
             cm.attributes = migrated
         return cm
 
-    # ── Seed dari character.json ─────────────────────────────────────────
-
     @staticmethod
     def seed_from_character_json(character_id: str, char_json: Dict) -> "CharacterMemory":
-        """
-        Bangun CharacterMemory awal dari isi character.json.
-
-        PRIORITAS SUMBER DATA:
-        1. Blok "profile": {...} kalau ada di character.json — cara yang
-           DIREKOMENDASIKAN. Isi blok ini disalin APA ADANYA ke attributes,
-           field apa pun boleh, TIDAK dibatasi ke contoh di bawah — tiap
-           karakter bebas punya set field yang berbeda.
-        2. Kalau tidak ada blok "profile", fallback cek beberapa field
-           umum (+ alias Indonesia-nya) di level atas character.json.
-
-        Kalau character.json tidak punya field-field ini sama sekali,
-        hasilnya CharacterMemory kosong (cuma full_name terisi dari "name")
-        — kamu tinggal tambahkan blok "profile" ke character.json lalu
-        jalankan `python character_memory.py generate <nama> --force`,
-        atau isi manual lewat export_json()/import_json(), atau biarkan
-        AI yang mengarang otomatis lewat generate_via_ai() (default saat load).
-
-        Contoh blok "profile" (boleh tambah/kurang field bebas, ini cuma contoh):
-            "profile": {
-                "full_name": "Liana Elcart",
-                "birthday": "12 Januari",
-                "zodiac": "Capricorn",
-                "likes": ["kopi", "hujan"],
-                "dislikes": ["keramaian"],
-                "hobbies": ["menggambar", "bermain gitar"],
-                "wants": ["ingin jalan-jalan ke Jepang", "ingin punya kucing"],
-                "personality": ["anggun", "keibuan", "manja", "tegas saat perlu"],
-                "fears": ["ketinggian"],
-                "backstory": "Liana tumbuh di kota kecil dan suka menulis cerita.",
-                "problem_today": "lupa taruh kacamata bacanya di mana"
-            }
-        """
         now = int(time.time())
         cm = CharacterMemory(character_id=character_id, created_ts=now, updated_ts=now)
 
@@ -449,8 +384,6 @@ class CharacterMemory:
         profile = profile if isinstance(profile, dict) else {}
 
         if profile:
-            # Blok "profile" ada -> salin semua field-nya apa adanya
-            # (kecuali "wants"/alias-nya, yang punya penanganan khusus).
             skip = {"wants", "keinginan", "goals"}
             cm.attributes = {
                 k: v for k, v in profile.items()
@@ -458,8 +391,6 @@ class CharacterMemory:
             }
             cm.attributes.setdefault("full_name", char_json.get("name", character_id))
         else:
-            # Fallback: tidak ada blok "profile" -> cek alias field umum
-            # di top-level character.json (untuk kompatibilitas lama).
             aliases = {
                 "full_name": ("full_name", "name", "nama"),
                 "birthday": ("birthday", "tanggal_lahir", "birth_date"),
@@ -500,21 +431,7 @@ class CharacterMemory:
 
         return cm
 
-
-# ─── AI-based auto-generate (kirim persona ke local model) ─────────────────
-#
-# Bukan seed statis dari field yang harus ditulis manual — ini mengirim
-# deskripsi kepribadian karakter (blok prompts.soul_system di character.json)
-# ke local model kamu (lihat config.py: ENDPOINTS + CALL_ROUTING), lalu model
-# itu sendiri yang "mengarang" data identitas (tanggal lahir, keinginan, dll)
-# yang KONSISTEN dengan kepribadiannya. Hasilnya baru disimpan ke bin.
-#
-# WAJIB: tambahkan satu entry baru di config.py punyamu, di CALL_ROUTING:
-#   CALL_ROUTING = {
-#       ...
-#       "profile_extract": "local_lm_studio",   # <- tambahkan baris ini
-#   }
-# (boleh pakai endpoint lain kalau mau, tinggal ganti value-nya)
+# ─── AI-based auto-generate ─────────────────────────────────────────────────
 
 _PROFILE_SCHEMA_HINT = """{
   "full_name": "...",
@@ -545,18 +462,7 @@ _PROFILE_SYSTEM_PROMPT = (
     "Output HANYA JSON object valid (flat, key snake_case), tanpa teks/markdown lain."
 )
 
-
 def _extract_persona_text(char_json: Dict) -> str:
-    """Ambil teks deskripsi kepribadian karakter dari character.json.
-
-    Hanya mengambil bagian IDENTITAS/KEPRIBADIAN/GAYA BICARA dari
-    prompts.soul_final_system / prompts.soul_system — bagian teknis di
-    prompt itu ([LOGIKA KONDISIONAL], [BATASAN OUTPUT], [FORMAT INPUT
-    PROMPT], dst) dibuang lewat _strip_technical_sections() supaya tidak
-    ikut mengotori prompt yang dikirim ke model saat generate profil.
-    Prioritas: soul_final_system (biasanya sudah ringkas/bersih) dulu,
-    baru soul_system (dibersihkan otomatis) sebagai fallback.
-    """
     name = char_json.get("name", "")
     prompts = char_json.get("prompts", {})
     prompts = prompts if isinstance(prompts, dict) else {}
@@ -573,14 +479,8 @@ def _extract_persona_text(char_json: Dict) -> str:
         parts.append(f"Data yang sudah diketahui (jangan diubah):\n{json.dumps(known, ensure_ascii=False)}")
     return "\n\n".join(parts)
 
-
 def _default_llm_call(system: str, user: str, pass_name: str = "profile_extract") -> str:
-    """
-    Default caller ke local model, pakai config.py (get_client/get_model/get_extra_body)
-    milikmu. Kalau config.py belum punya routing 'profile_extract', atau model lokal
-    belum jalan, ini akan raise — dan generate_via_ai() akan fallback dengan aman.
-    """
-    import config  # lazy import — modul ini tetap bisa dipakai berdiri sendiri tanpa config.py
+    import config
     client = config.get_client(pass_name)
     model = config.get_model(pass_name)
     extra_body = config.get_extra_body(pass_name)
@@ -595,7 +495,6 @@ def _default_llm_call(system: str, user: str, pass_name: str = "profile_extract"
         extra_body=extra_body or None,
     )
     return (resp.choices[0].message.content or "").strip()
-
 
 def _parse_json_loose(raw: str) -> Optional[Dict]:
     text = raw.strip()
@@ -615,32 +514,12 @@ def _parse_json_loose(raw: str) -> Optional[Dict]:
                 pass
     return None
 
-
 def generate_via_ai(
     character_id: str,
     char_json: Dict,
     llm_call=None,
     debug: Optional[bool] = None,
 ) -> "CharacterMemory":
-    """
-    Auto-generate CharacterMemory dengan mengirim persona karakter (sudah
-    dibersihkan dari bagian teknis, lihat _extract_persona_text) ke local
-    model, minta model MELENGKAPI data identitasnya sendiri secara bebas
-    (bukan whitelist fixed) — field apa pun yang dikembalikan model akan
-    disimpan apa adanya ke attributes, jadi tiap karakter bisa tumbuh
-    dengan set field yang berbeda-beda.
-
-    llm_call: callable(system, user) -> str raw text. Default pakai config.py.
-    debug: None -> auto-deteksi (lihat _resolve_debug: env CHARMEM_DEBUG /
-        config.DEBUG). True/False -> paksa nyala/mati untuk panggilan ini.
-        Kalau aktif, system+user prompt asli & raw response DICATAT setiap
-        kali fungsi ini jalan (bukan cuma saat CLI manual), ke console dan
-        ke state/character_memory_debug.log.
-
-    Kalau gagal (model belum jalan / routing belum ada / output bukan JSON
-    valid), otomatis fallback ke seed_from_character_json() biasa (tidak
-    pernah crash).
-    """
     caller = llm_call or _default_llm_call
     user_prompt = _extract_persona_text(char_json)
     dbg = _resolve_debug(debug)
@@ -665,9 +544,6 @@ def generate_via_ai(
     now = int(time.time())
     cm = CharacterMemory(character_id=character_id, created_ts=now, updated_ts=now)
 
-    # "wants" ditangani khusus (list -> punya priority/id/ts sendiri),
-    # semua field LAIN yang dikembalikan model — baku ataupun tambahan
-    # bebas seperti "problem_today" — disimpan apa adanya ke attributes.
     wants_raw = data.pop("wants", None) or data.pop("keinginan", None) or []
     if isinstance(wants_raw, str):
         wants_raw = [wants_raw]
@@ -688,8 +564,7 @@ def generate_via_ai(
         _dbg_log_result(cm)
     return cm
 
-
-# ─── Public API (mengikuti pola load()/save() seperti long_memory.py) ───────
+# ─── Public API (dengan support char_dir opsional) ─────────────────────────
 
 def load(
     character_id: str,
@@ -697,21 +572,18 @@ def load(
     use_ai: bool = True,
     llm_call=None,
     debug: Optional[bool] = None,
+    char_dir: Optional[str] = None,
 ) -> CharacterMemory:
     """
-    Ambil CharacterMemory untuk karakter tsb. Kalau belum pernah ada,
-    otomatis dibuat (auto-generate):
-      - use_ai=True (default)  -> kirim persona ke local model, model yang
-        mengisi datanya sendiri (lihat generate_via_ai()).
-      - use_ai=False            -> hanya seed dari field character.json
-        (butuh blok "profile" ditulis manual, lihat seed_from_character_json()).
-
-    debug: None -> auto-deteksi lewat env CHARMEM_DEBUG / config.DEBUG.
-        Dipakai buat lihat prompt asli yang dikirim ke model tiap kali
-        generate_via_ai() jalan lewat jalur ini (dipanggil otomatis oleh
-        CharacterManager.load() di runtime app, bukan cuma manual).
+    Ambil CharacterMemory untuk karakter tsb.
+    
+    char_dir: folder karakter (mis. characters/liana). Kalau diberikan,
+    file bin disimpan di folder karakter tersebut. Kalau None, fallback
+    ke state/character_memory.bin (backward compat).
     """
-    raw = _read_all().get(character_id)
+    _migrate_from_global(character_id, char_dir)
+
+    raw = _read_char(character_id, char_dir)
     if raw is not None:
         try:
             return CharacterMemory.from_dict(raw)
@@ -725,31 +597,37 @@ def load(
     else:
         cm = CharacterMemory.seed_from_character_json(character_id, char_json)
 
-    save(cm)
+    save(cm, char_dir=char_dir)
     return cm
 
-
-def save(cm: CharacterMemory):
+def save(cm: CharacterMemory, char_dir: Optional[str] = None):
     cm.updated_ts = int(time.time())
-    data = _read_all()
-    data[cm.character_id] = cm.to_dict()
-    _write_all(data)
+    _write_char(cm, char_dir)
 
+def exists(character_id: str, char_dir: Optional[str] = None) -> bool:
+    _migrate_from_global(character_id, char_dir)
+    return _read_char(character_id, char_dir) is not None
 
-def exists(character_id: str) -> bool:
-    return character_id in _read_all()
-
-
-def clear(character_id: str):
-    data = _read_all()
+def clear(character_id: str, char_dir: Optional[str] = None):
+    path = _char_path(character_id, char_dir)
+    data = _read_file(path)
     if character_id in data:
         del data[character_id]
-        _write_all(data)
+        if data:
+            _write_file(path, data)
+        else:
+            try:
+                os.remove(path)
+            except Exception:
+                pass
 
-
-def list_characters() -> List[str]:
-    return sorted(_read_all().keys())
-
+def list_characters(char_dir: Optional[str] = None) -> List[str]:
+    if char_dir:
+        path = os.path.join(char_dir, _FILE)
+        if os.path.exists(path):
+            return sorted(_read_file(path).keys())
+        return []
+    return sorted(_read_file(_global_path()).keys())
 
 def _read_character_json(char_manager, name: str) -> Dict:
     char_dir = os.path.join(char_manager.dir, name)
@@ -763,7 +641,6 @@ def _read_character_json(char_manager, name: str) -> Dict:
             pass
     return char_json
 
-
 def ensure_all(
     char_manager,
     force: bool = False,
@@ -771,24 +648,10 @@ def ensure_all(
     llm_call=None,
     debug: Optional[bool] = None,
 ) -> List[str]:
-    """
-    Dipanggil sekali saat app start (auto-generate). Untuk setiap karakter
-    yang terdeteksi oleh CharacterManager:
-      - kalau bin belum ada -> generate baru
-          - use_ai=True (default): kirim persona ke local model, model isi
-            datanya sendiri (generate_via_ai). Kalau model belum jalan,
-            otomatis fallback ke seed dari character.json (tidak crash).
-          - use_ai=False: hanya seed dari field character.json (butuh blok
-            "profile" ditulis manual).
-      - kalau bin sudah ada dan force=False -> dibiarkan (tidak ditimpa)
-      - kalau force=True -> selalu di-regenerate ulang
-
-    debug: None -> auto-deteksi lewat env CHARMEM_DEBUG / config.DEBUG.
-    Return: list nama karakter yang di-generate/regenerate.
-    """
     generated = []
     for name in char_manager.list_characters():
-        if exists(name) and not force:
+        char_dir = os.path.join(char_manager.dir, name)
+        if exists(name, char_dir=char_dir) and not force:
             continue
         char_json = _read_character_json(char_manager, name)
         cm = (
@@ -796,10 +659,9 @@ def ensure_all(
             if use_ai else
             CharacterMemory.seed_from_character_json(name, char_json)
         )
-        save(cm)
+        save(cm, char_dir=char_dir)
         generated.append(name)
     return generated
-
 
 def regenerate(
     char_manager,
@@ -808,63 +670,44 @@ def regenerate(
     llm_call=None,
     debug: Optional[bool] = None,
 ) -> CharacterMemory:
-    """
-    Regenerate ulang SATU karakter secara paksa, menimpa data lama.
-    Dipakai buat command manual: python character_memory.py generate <nama> --force
-    """
+    char_dir = os.path.join(char_manager.dir, character_id)
     char_json = _read_character_json(char_manager, character_id)
     cm = (
         generate_via_ai(character_id, char_json, llm_call, debug=debug)
         if use_ai else
         CharacterMemory.seed_from_character_json(character_id, char_json)
     )
-    save(cm)
+    save(cm, char_dir=char_dir)
     return cm
 
+# ─── Utility: export/import ke JSON ──────────────────────────────────────────
 
-# ─── Utility: export/import ke JSON supaya gampang diedit manual ────────────
-
-def export_json(character_id: str, out_path: Optional[str] = None) -> str:
-    """Ekspor isi bin ke file .json yang bisa diedit tangan, lalu di-import lagi."""
-    cm = load(character_id)
-    out_path = out_path or os.path.join(
-        os.path.dirname(os.path.abspath(__file__)), "state", f"{character_id}_memory_export.json"
-    )
+def export_json(character_id: str, out_path: Optional[str] = None, char_dir: Optional[str] = None) -> str:
+    cm = load(character_id, char_dir=char_dir)
+    if out_path:
+        pass
+    elif char_dir:
+        out_path = os.path.join(char_dir, f"{character_id}_memory_export.json")
+    else:
+        out_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "state", f"{character_id}_memory_export.json"
+        )
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(cm.to_dict(), f, indent=2, ensure_ascii=False)
     return out_path
 
-
-def import_json(character_id: str, json_path: str):
-    """Baca file json hasil edit manual, lalu tulis ulang ke bin."""
+def import_json(character_id: str, json_path: str, char_dir: Optional[str] = None):
     with open(json_path, "r", encoding="utf-8") as f:
         d = json.load(f)
     d["character_id"] = character_id
     cm = CharacterMemory.from_dict(d)
-    save(cm)
-
+    save(cm, char_dir=char_dir)
 
 # ─── CLI kecil buat testing & regenerate manual ─────────────────────────────
-#
-# Contoh pemakaian:
-#   python character_memory.py list
-#   python character_memory.py show liana
-#   python character_memory.py generate liana --force            # AI-generate (default)
-#   python character_memory.py generate liana --force --no-ai    # tanpa AI, cuma dari blok "profile" manual
-#   python character_memory.py generate liana --force --debug    # + tampilkan prompt asli & raw response
-#   python character_memory.py generate-all --force
-#   python character_memory.py export liana
-#   python character_memory.py clear liana
-#
-# --debug juga bisa dipicu tanpa argumen CLI sama sekali (mis. saat generate
-# ke-trigger otomatis lewat CharacterManager.load() di app biasa, bukan CLI):
-# set env CHARMEM_DEBUG=1, atau config.DEBUG = True di config.py kamu.
 
 def _get_char_manager():
-    """Import CharacterManager secara lazy (hanya dibutuhkan untuk CLI)."""
     from character_manager import CharacterManager
     return CharacterManager()
-
 
 if __name__ == "__main__":
     import sys
@@ -872,70 +715,84 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     force = "--force" in args
     use_ai = "--no-ai" not in args
-    debug_flag = True if "--debug" in args else None  # None = auto-deteksi (env/config)
+    debug_flag = True if "--debug" in args else None
     args = [a for a in args if a not in ("--force", "--no-ai", "--debug")]
 
     if not args:
         print(
             "Usage:\n"
             "  python character_memory.py list\n"
-            "  python character_memory.py show <character_id>\n"
-            "  python character_memory.py generate <character_id> [--force] [--no-ai] [--debug]\n"
+            "  python character_memory.py show <name>\n"
+            "  python character_memory.py generate <name> [--force] [--no-ai] [--debug]\n"
             "  python character_memory.py generate-all [--force] [--no-ai] [--debug]\n"
-            "  python character_memory.py export <character_id>\n"
-            "  python character_memory.py import <character_id> <json_path>\n"
-            "  python character_memory.py clear <character_id>\n"
+            "  python character_memory.py export <name>\n"
+            "  python character_memory.py import <name> <json_path>\n"
+            "  python character_memory.py clear <name>\n"
             "\n"
-            "Default: generate/generate-all pakai AI (kirim persona ke local model\n"
-            "dari config.py). Tambah --no-ai untuk cuma pakai blok 'profile' manual\n"
-            "di character.json tanpa manggil model. Tambah --debug untuk lihat\n"
-            "system+user prompt asli & raw response dari model (juga tercatat ke\n"
-            "state/character_memory_debug.log)."
+            "Default: generate/generate-all pakai AI. Tambah --no-ai untuk cuma\n"
+            "pakai blok 'profile' manual di character.json tanpa manggil model.\n"
+            "Tambah --debug untuk lihat prompt asli & raw response dari model."
         )
         sys.exit(0)
 
     cmd = args[0]
+    mgr = _get_char_manager() if cmd in ("generate", "generate-all", "show", "export", "clear") else None
 
     if cmd == "list":
-        print(list_characters())
+        if mgr:
+            for name in mgr.list_characters():
+                char_dir = os.path.join(mgr.dir, name)
+                has_mem = exists(name, char_dir=char_dir)
+                print(f"  {name} {'[ada]' if has_mem else '[belum ada]'}")
+        else:
+            print(list_characters())
 
     elif cmd == "show" and len(args) > 1:
-        print(load(args[1]).summary_for_context())
+        name = args[1]
+        char_dir = os.path.join(mgr.dir, name) if mgr else None
+        print(load(name, char_dir=char_dir).summary_for_context())
 
     elif cmd == "generate" and len(args) > 1:
         name = args[1]
-        mgr = _get_char_manager()
         if name not in mgr.list_characters():
             print(f"[!] Character '{name}' tidak ditemukan di folder {mgr.dir}")
             sys.exit(1)
-        if exists(name) and not force:
+        char_dir = os.path.join(mgr.dir, name)
+        if exists(name, char_dir=char_dir) and not force:
             print(f"[i] Memory '{name}' sudah ada. Pakai --force untuk menimpa ulang.")
         else:
             mode = "AI (local model)" if use_ai else "character.json manual"
             print(f"[i] Generating '{name}' via {mode}...")
             regenerate(mgr, name, use_ai=use_ai, debug=debug_flag)
-            print(f"[OK] Memory '{name}' berhasil di-generate.")
+            print(f"[OK] Memory '{name}' berhasil di-generate di {char_dir}/{_FILE}")
 
     elif cmd == "generate-all":
-        mgr = _get_char_manager()
         mode = "AI (local model)" if use_ai else "character.json manual"
         print(f"[i] Generating semua karakter via {mode}...")
         generated = ensure_all(mgr, force=force, use_ai=use_ai, debug=debug_flag)
         if generated:
-            print(f"[OK] Generated/regenerated untuk: {generated}")
+            for name in generated:
+                char_dir = os.path.join(mgr.dir, name)
+                print(f"  [OK] {name} -> {char_dir}/{_FILE}")
         else:
             print("[i] Tidak ada yang di-generate (semua sudah ada). Pakai --force untuk paksa regenerate semua.")
 
     elif cmd == "export" and len(args) > 1:
-        print("Exported to:", export_json(args[1]))
+        name = args[1]
+        char_dir = os.path.join(mgr.dir, name) if mgr else None
+        print("Exported to:", export_json(name, char_dir=char_dir))
 
     elif cmd == "import" and len(args) > 2:
-        import_json(args[1], args[2])
-        print(f"[OK] Memory '{args[1]}' berhasil di-import dari {args[2]}")
+        name = args[1]
+        char_dir = os.path.join(mgr.dir, name) if mgr else None
+        import_json(name, args[2], char_dir=char_dir)
+        print(f"[OK] Memory '{name}' berhasil di-import dari {args[2]}")
 
     elif cmd == "clear" and len(args) > 1:
-        clear(args[1])
-        print(f"[OK] Cleared memory for '{args[1]}'")
+        name = args[1]
+        char_dir = os.path.join(mgr.dir, name) if mgr else None
+        clear(name, char_dir=char_dir)
+        print(f"[OK] Cleared memory for '{name}'")
 
     else:
         print("Command tidak dikenali atau argumen kurang. Jalankan tanpa argumen untuk lihat usage.")
