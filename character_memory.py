@@ -7,23 +7,37 @@ tanggal lahir, keinginan, hobi, kepribadian, dst. Satu file bin menyimpan
 memory untuk SEMUA karakter, di-index per character_id (nama folder di
 character/<nama>/).
 
-Menyimpan:
-- identity     : nama lengkap, tanggal lahir, zodiak, umur (opsional)
-- likes / dislikes / hobbies
-- wants        : keinginan / cita-cita karakter (list, bisa prioritas)
-- personality  : trait kepribadian singkat
-- backstory    : latar belakang cerita
-- fears        : ketakutan (opsional, buat roleplay lebih dalam)
-- custom_facts : fakta bebas yang bisa ditambah AI/dev kapan saja
+SKEMA BEBAS (tidak fixed):
+Data identitas karakter disimpan di CharacterMemory.attributes — sebuah
+dict bebas, BUKAN kolom tetap. Artinya field APA SAJA boleh ada di sana
+(full_name, birthday, likes, tapi juga "problem_today", "makanan_favorit",
+"kebiasaan_unik", dsb) dan tiap karakter boleh punya set field yang beda-
+beda. Field bisa ditambah/dikurangi bebas kapan saja lewat set_field()/
+remove_field(), atau otomatis ditambah oleh AI (lihat generate_via_ai()).
+- wants        : keinginan / cita-cita karakter (list terpisah, bisa prioritas)
+- custom_facts : catatan bebas tambahan (list terpisah, append-only)
 
 Auto-generate: saat CharacterManager.load(nama) dipanggil pertama kali dan
 belum ada data character_memory untuk karakter tsb, modul ini otomatis
-membuat entry baru dengan men-seed dari character.json (jika field terkait
-ada di sana), lalu simpan permanen ke state/character_memory.bin.
+membuat entry baru — defaultnya via AI (generate_via_ai): persona karakter
+(sudah dibersihkan dari bagian teknis prompt, lihat _extract_persona_text)
+dikirim ke local model, lalu model itu sendiri yang mengarang data
+identitasnya secara bebas (tidak dibatasi field baku). Fallback ke seed
+dari character.json kalau AI gagal/belum jalan.
 
 Persist: state/character_memory.bin — satu file untuk semua karakter,
 format sama seperti long_memory.py (header magic + index + payload
 msgpack/pickle) supaya konsisten dengan modul memory lain di project ini.
+
+DEBUG PROMPT:
+Untuk lihat system/user prompt PERSIS yang dikirim ke model setiap kali
+generate_via_ai() jalan (bukan cuma pas testing manual via CLI), aktifkan
+salah satu dari:
+  1. set config.DEBUG = True (dipakai otomatis di seluruh project ini), ATAU
+  2. set environment variable CHARMEM_DEBUG=1 (tidak perlu ubah config.py
+     sama sekali, cocok buat debug cepat), ATAU
+  3. lewat argumen eksplisit debug=True ke load()/ensure_all()/regenerate().
+Log ditulis ke console DAN ke state/character_memory_debug.log.
 """
 
 from __future__ import annotations
@@ -31,9 +45,11 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import struct
 import time
 from dataclasses import dataclass, field, asdict
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 try:
@@ -53,6 +69,125 @@ _L_FMT = ">I"; _L_SZ = struct.calcsize(_L_FMT)
 
 _MAX_WANTS = 30
 _MAX_FACTS = 100
+_DEBUG_LOG_FILE = "character_memory_debug.log"
+_DBG_SEP = "═" * 68
+
+
+# ─── Debug: lihat prompt asli tiap kali generate jalan ───────────────────────
+#
+# Bukan cuma pas CLI manual — resolusi debug ini dipakai oleh load(),
+# ensure_all(), regenerate() juga, jadi ke-trigger otomatis di jalur normal
+# app (mis. CharacterManager.load() -> character_memory.load()) selama
+# salah satu switch di bawah aktif.
+
+def _resolve_debug(debug: Optional[bool]) -> bool:
+    """Tentukan apakah debug logging aktif. Prioritas: argumen eksplisit ->
+    env var CHARMEM_DEBUG -> config.DEBUG (kalau config.py ada) -> False."""
+    if debug is not None:
+        return bool(debug)
+    env = os.environ.get("CHARMEM_DEBUG")
+    if env is not None:
+        return env.strip().lower() in ("1", "true", "yes", "on")
+    try:
+        import config  # lazy import, modul ini tetap jalan tanpa config.py
+        return bool(getattr(config, "DEBUG", False))
+    except Exception:
+        return False
+
+
+def _debug_log_path() -> str:
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, _DEBUG_LOG_FILE)
+
+
+def _dbg_write(text: str):
+    print(text)
+    try:
+        with open(_debug_log_path(), "a", encoding="utf-8") as f:
+            f.write(text + "\n")
+    except Exception:
+        pass
+
+
+def _dbg_log_prompt(character_id: str, system: str, user: str):
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    _dbg_write(f"\n{_DBG_SEP}\n[CHAR MEMORY][{ts}] generate_via_ai → '{character_id}'\n{_DBG_SEP}")
+    _dbg_write("── SYSTEM PROMPT (dikirim ke local model) " + "─" * 24)
+    _dbg_write(system)
+    _dbg_write("── USER PROMPT / PERSONA (sudah dibersihkan dari bagian teknis) " + "─" * 3)
+    _dbg_write(user)
+
+
+def _dbg_log_raw_response(raw: str):
+    _dbg_write("── RAW RESPONSE dari model " + "─" * 40)
+    _dbg_write(raw)
+
+
+def _dbg_log_result(cm: "CharacterMemory"):
+    _dbg_write("── HASIL AKHIR (disimpan ke bin) " + "─" * 34)
+    _dbg_write(json.dumps(cm.to_dict(), ensure_ascii=False, indent=2))
+
+
+# ─── Pembersih persona: buang bagian teknis dari blok prompts.soul_* ─────────
+#
+# Blok prompts.soul_system/soul_final_system di character.json berisi
+# beberapa section bertanda "[NAMA SECTION]". Cuma section identitas paling
+# awal (mis. "[SYSTEM CORE DIRECTIVE]" / "[SYSTEM CORE]") yang relevan buat
+# generate profil (isinya IDENTITAS/KEPRIBADIAN/GAYA BICARA). Section
+# sesudahnya ("[LOGIKA KONDISIONAL & PERILAKU]", "[BATASAN OUTPUT ...]",
+# "[FORMAT INPUT PROMPT]", dst) murni instruksi teknis untuk runtime chat,
+# BUKAN deskripsi karakter — kalau ikut terkirim ke model saat generate
+# profil, cuma bikin prompt kotor dan bisa nurunin kualitas hasil.
+
+_TECHNICAL_HEADER_KEYWORDS = (
+    "LOGIKA", "KONDISIONAL", "PERILAKU", "BATASAN", "FORMAT INPUT",
+    "FORMAT OUTPUT", "INPUT PROMPT", "OUTPUT FORMAT", "MASUKAN DATA",
+    "PANDUAN OVERRIDE", "TASK_RESULT", "CMD", "OVERRIDE", "IDENTITY",
+    "HISTORY", "CHAT", "OUTPUT", "CONTEXT", "TASK", "RULES", "CONSTRAINT",
+)
+_IDENTITY_HEADER_KEYWORDS = ("SYSTEM CORE", "IDENTITAS", "PERSONA", "KEPRIBADIAN", "CHARACTER")
+
+_SECTION_HEADER_RE = re.compile(r'^\[([^\]]+)\]\s*$', re.MULTILINE)
+
+
+def _strip_technical_sections(text: str) -> str:
+    """Buang section prompt yang teknis (logika kondisional, batasan output,
+    format input, dst), sisakan cuma section identitas/kepribadian."""
+    if not text:
+        return ""
+    matches = list(_SECTION_HEADER_RE.finditer(text))
+    if not matches:
+        # Tidak ada section bertanda [...] sama sekali -> anggap semua teks
+        # relevan (kemungkinan format prompt custom di luar pola project ini).
+        return text.strip()
+
+    kept: List[str] = []
+    # Teks sebelum header pertama (jarang ada, tapi jaga-jaga).
+    preamble = text[:matches[0].start()].strip()
+    if preamble:
+        kept.append(preamble)
+
+    for i, m in enumerate(matches):
+        header = m.group(1).strip().upper()
+        start = m.start()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        block = text[start:end].strip()
+
+        is_technical = any(kw in header for kw in _TECHNICAL_HEADER_KEYWORDS)
+        is_identity = any(kw in header for kw in _IDENTITY_HEADER_KEYWORDS)
+
+        # Section pertama selalu dianggap identitas (mengikuti pola project
+        # ini: [SYSTEM CORE DIRECTIVE]/[SYSTEM CORE] selalu di paling awal),
+        # kecuali headernya sendiri sudah jelas-jelas teknis.
+        if i == 0 and not is_technical:
+            kept.append(block)
+        elif is_identity and not is_technical:
+            kept.append(block)
+        # sisanya (teknis, atau tidak dikenali & bukan section pertama) dibuang
+
+    cleaned = "\n\n".join(kept).strip()
+    return cleaned or text.strip()  # safety net: jangan sampai balik string kosong
 
 
 def _path() -> str:
@@ -123,21 +258,52 @@ def _write_all(data: Dict[str, Dict]):
 
 
 # ─── Data model ────────────────────────────────────────────────────────────
+#
+# SKEMA BEBAS: identitas karakter (full_name, birthday, zodiac, likes, dst —
+# TERMASUK field baru apa pun yang tidak ada di contoh ini) semuanya hidup
+# di `attributes`, sebuah dict polos. Tidak ada whitelist field yang
+# di-hardcode di sini — mau nambah "problem_today", "kutipan_andalan",
+# "kebiasaan_unik", atau apa pun, tinggal attributes[key] = value.
+# `wants` dan `custom_facts` tetap list terpisah karena punya mekanisme
+# sendiri (priority, dedup, cap jumlah, urutan waktu).
+
+_LABELS = {
+    "full_name": "Nama",
+    "birthday": "Tanggal lahir",
+    "zodiac": "Zodiak",
+    "age": "Umur",
+    "personality": "Kepribadian",
+    "likes": "Suka",
+    "dislikes": "Tidak suka",
+    "hobbies": "Hobi",
+    "fears": "Takut akan",
+    "backstory": "Latar belakang",
+}
+_SUMMARY_PRIORITY = ["full_name", "birthday", "zodiac", "age", "personality", "likes", "dislikes", "hobbies"]
+
+# Field lama (format bin versi sebelumnya, sebelum jadi `attributes` bebas)
+# — dipakai cuma buat migrasi otomatis data lama, bukan whitelist baru.
+_LEGACY_TOP_LEVEL_KEYS = (
+    "full_name", "birthday", "zodiac", "age", "likes", "dislikes",
+    "hobbies", "personality", "backstory", "fears",
+)
+
+
+def _fmt_value(v: Any, max_len: int = 180) -> str:
+    if isinstance(v, list):
+        s = ", ".join(str(x) for x in v[:6])
+    elif isinstance(v, dict):
+        s = json.dumps(v, ensure_ascii=False)
+    else:
+        s = str(v)
+    return s if len(s) <= max_len else s[:max_len].rstrip() + "…"
+
 
 @dataclass
 class CharacterMemory:
     character_id: str = ""
-    full_name: str = ""
-    birthday: str = ""              # contoh: "12 Januari" atau "2003-01-12"
-    zodiac: str = ""
-    age: Optional[int] = None
-    likes: List[str] = field(default_factory=list)
-    dislikes: List[str] = field(default_factory=list)
-    hobbies: List[str] = field(default_factory=list)
+    attributes: Dict[str, Any] = field(default_factory=dict)  # bebas, tidak fixed
     wants: List[Dict] = field(default_factory=list)      # [{text, priority, ts}]
-    personality: List[str] = field(default_factory=list)
-    backstory: str = ""
-    fears: List[str] = field(default_factory=list)
     custom_facts: List[Dict] = field(default_factory=list)  # [{text, ts}]
     created_ts: int = 0
     updated_ts: int = 0
@@ -165,9 +331,24 @@ class CharacterMemory:
             self.custom_facts = self.custom_facts[-_MAX_FACTS:]
 
     def set_field(self, key: str, value: Any):
-        """Update field identitas dasar secara langsung (birthday, zodiac, dll)."""
-        if hasattr(self, key):
-            setattr(self, key, value)
+        """Tambah/timpa 1 field identitas bebas apa pun (bukan whitelist)."""
+        key = key.strip()
+        if not key:
+            return
+        if value in (None, "", [], {}):
+            self.attributes.pop(key, None)
+        else:
+            self.attributes[key] = value
+
+    def remove_field(self, key: str):
+        """Hapus 1 field identitas — datanya memang boleh berkurang bebas."""
+        self.attributes.pop(key, None)
+
+    def get_field(self, key: str, default: Any = None) -> Any:
+        return self.attributes.get(key, default)
+
+    def field_keys(self) -> List[str]:
+        return list(self.attributes.keys())
 
     # ── Query untuk dijawab AI ───────────────────────────────────────────
 
@@ -176,27 +357,26 @@ class CharacterMemory:
         return [w["text"] for w in sorted_w[:n]]
 
     def summary_for_context(self) -> str:
-        """Dipanggil context_composer.py untuk inject profil karakter ke prompt."""
+        """Dipanggil context_composer.py untuk inject profil karakter ke prompt.
+        Field yang ditampilkan MENGIKUTI apa pun yang ada di attributes —
+        tidak dibatasi ke daftar field baku, jadi karakter A dan B bisa
+        menghasilkan baris yang beda-beda tergantung data yang mereka punya."""
+        if not self.attributes and not self.wants and not self.custom_facts:
+            return "(belum ada data karakter)"
+
         lines = ["[Profil Diri Karakter]"]
-        if self.full_name:
-            lines.append(f" - Nama: {self.full_name}")
-        if self.birthday:
-            lines.append(f" - Tanggal lahir: {self.birthday}" + (f" ({self.zodiac})" if self.zodiac else ""))
-        if self.personality:
-            lines.append(f" - Kepribadian: {', '.join(self.personality[:5])}")
-        if self.likes:
-            lines.append(f" - Suka: {', '.join(self.likes[:5])}")
-        if self.dislikes:
-            lines.append(f" - Tidak suka: {', '.join(self.dislikes[:5])}")
-        if self.hobbies:
-            lines.append(f" - Hobi: {', '.join(self.hobbies[:5])}")
+        ordered_keys = [k for k in _SUMMARY_PRIORITY if k in self.attributes]
+        ordered_keys += [k for k in self.attributes.keys() if k not in ordered_keys]
+        for k in ordered_keys:
+            v = self.attributes.get(k)
+            if v in (None, "", [], {}):
+                continue
+            label = _LABELS.get(k) or k.replace("_", " ").strip().capitalize()
+            lines.append(f" - {label}: {_fmt_value(v)}")
+
         wants = self.get_wants(3)
         if wants:
             lines.append(f" - Keinginan: {'; '.join(wants)}")
-        if self.fears:
-            lines.append(f" - Takut akan: {', '.join(self.fears[:3])}")
-        if self.backstory:
-            lines.append(f" - Latar belakang: {self.backstory[:150]}")
         recent_facts = [f["text"] for f in self.custom_facts[-3:]]
         if recent_facts:
             lines.append(f" - Catatan tambahan: {'; '.join(recent_facts)}")
@@ -208,9 +388,21 @@ class CharacterMemory:
     @staticmethod
     def from_dict(d: Dict) -> "CharacterMemory":
         cm = CharacterMemory(character_id=d.get("character_id", ""))
-        for k, v in d.items():
-            if hasattr(cm, k):
-                setattr(cm, k, v)
+        cm.created_ts = d.get("created_ts", 0) or 0
+        cm.updated_ts = d.get("updated_ts", 0) or 0
+        cm.wants = list(d.get("wants") or [])
+        cm.custom_facts = list(d.get("custom_facts") or [])
+        if isinstance(d.get("attributes"), dict):
+            cm.attributes = dict(d["attributes"])
+        else:
+            # Migrasi otomatis dari format bin lama (kolom fixed) ke
+            # attributes bebas, supaya data lama tidak hilang.
+            migrated = {}
+            for k in _LEGACY_TOP_LEVEL_KEYS:
+                v = d.get(k)
+                if v not in (None, "", [], {}):
+                    migrated[k] = v
+            cm.attributes = migrated
         return cm
 
     # ── Seed dari character.json ─────────────────────────────────────────
@@ -222,18 +414,20 @@ class CharacterMemory:
 
         PRIORITAS SUMBER DATA:
         1. Blok "profile": {...} kalau ada di character.json — cara yang
-           DIREKOMENDASIKAN, supaya data identitas (birthday, wants, dll)
-           terpisah rapi dari blok "prompts" yang biasanya sudah besar/panjang.
-        2. Kalau tidak ada blok "profile", fallback cek field yang sama
-           persis di level atas character.json (top-level).
+           DIREKOMENDASIKAN. Isi blok ini disalin APA ADANYA ke attributes,
+           field apa pun boleh, TIDAK dibatasi ke contoh di bawah — tiap
+           karakter bebas punya set field yang berbeda.
+        2. Kalau tidak ada blok "profile", fallback cek beberapa field
+           umum (+ alias Indonesia-nya) di level atas character.json.
 
         Kalau character.json tidak punya field-field ini sama sekali,
         hasilnya CharacterMemory kosong (cuma full_name terisi dari "name")
         — kamu tinggal tambahkan blok "profile" ke character.json lalu
         jalankan `python character_memory.py generate <nama> --force`,
-        atau isi manual lewat export_json()/import_json().
+        atau isi manual lewat export_json()/import_json(), atau biarkan
+        AI yang mengarang otomatis lewat generate_via_ai() (default saat load).
 
-        Contoh blok yang perlu ditambahkan di character.json:
+        Contoh blok "profile" (boleh tambah/kurang field bebas, ini cuma contoh):
             "profile": {
                 "full_name": "Liana Elcart",
                 "birthday": "12 Januari",
@@ -244,7 +438,8 @@ class CharacterMemory:
                 "wants": ["ingin jalan-jalan ke Jepang", "ingin punya kucing"],
                 "personality": ["anggun", "keibuan", "manja", "tegas saat perlu"],
                 "fears": ["ketinggian"],
-                "backstory": "Liana tumbuh di kota kecil dan suka menulis cerita."
+                "backstory": "Liana tumbuh di kota kecil dan suka menulis cerita.",
+                "problem_today": "lupa taruh kacamata bacanya di mana"
             }
         """
         now = int(time.time())
@@ -253,39 +448,42 @@ class CharacterMemory:
         profile = char_json.get("profile")
         profile = profile if isinstance(profile, dict) else {}
 
-        def pick(*keys, default=""):
-            # 1) cek di blok "profile" dulu
-            for k in keys:
-                if k in profile and profile[k]:
-                    return profile[k]
-            # 2) fallback ke top-level character.json
-            for k in keys:
-                if k in char_json and char_json[k]:
-                    return char_json[k]
-            return default
-
-        cm.full_name = pick("full_name", "name", "nama", default=character_id)
-        cm.birthday = pick("birthday", "tanggal_lahir", "birth_date")
-        cm.zodiac = pick("zodiac", "zodiak")
-        age_val = pick("age", "umur", default=None)
-        cm.age = int(age_val) if isinstance(age_val, (int, str)) and str(age_val).isdigit() else None
-
-        def as_list(*keys):
-            for src in (profile, char_json):
+        if profile:
+            # Blok "profile" ada -> salin semua field-nya apa adanya
+            # (kecuali "wants"/alias-nya, yang punya penanganan khusus).
+            skip = {"wants", "keinginan", "goals"}
+            cm.attributes = {
+                k: v for k, v in profile.items()
+                if k not in skip and v not in (None, "", [], {})
+            }
+            cm.attributes.setdefault("full_name", char_json.get("name", character_id))
+        else:
+            # Fallback: tidak ada blok "profile" -> cek alias field umum
+            # di top-level character.json (untuk kompatibilitas lama).
+            aliases = {
+                "full_name": ("full_name", "name", "nama"),
+                "birthday": ("birthday", "tanggal_lahir", "birth_date"),
+                "zodiac": ("zodiac", "zodiak"),
+                "age": ("age", "umur"),
+                "likes": ("likes", "suka"),
+                "dislikes": ("dislikes", "tidak_suka"),
+                "hobbies": ("hobbies", "hobi"),
+                "personality": ("personality", "personality_traits", "kepribadian"),
+                "fears": ("fears", "ketakutan"),
+                "backstory": ("backstory", "bio", "latar_belakang", "description"),
+            }
+            list_fields = {"likes", "dislikes", "hobbies", "personality", "fears"}
+            attrs: Dict[str, Any] = {}
+            for canon, keys in aliases.items():
                 for k in keys:
-                    v = src.get(k)
-                    if isinstance(v, list):
-                        return list(v)
-                    if isinstance(v, str) and v:
-                        return [s.strip() for s in v.split(",") if s.strip()]
-            return []
-
-        cm.likes = as_list("likes", "suka")
-        cm.dislikes = as_list("dislikes", "tidak_suka")
-        cm.hobbies = as_list("hobbies", "hobi")
-        cm.personality = as_list("personality", "personality_traits", "kepribadian")
-        cm.fears = as_list("fears", "ketakutan")
-        cm.backstory = pick("backstory", "bio", "latar_belakang", "description")
+                    if k in char_json and char_json[k] not in (None, "", [], {}):
+                        v = char_json[k]
+                        if canon in list_fields and isinstance(v, str):
+                            v = [s.strip() for s in v.split(",") if s.strip()]
+                        attrs[canon] = v
+                        break
+            attrs.setdefault("full_name", char_json.get("name", character_id))
+            cm.attributes = attrs
 
         wants_raw = (
             profile.get("wants") or profile.get("keinginan") or profile.get("goals")
@@ -334,21 +532,36 @@ _PROFILE_SCHEMA_HINT = """{
 _PROFILE_SYSTEM_PROMPT = (
     "[PROFILE EXTRACT] Kamu membaca deskripsi kepribadian sebuah karakter AI VTuber, "
     "lalu MELENGKAPI data identitas pribadi karakter tsb secara detail dan KONSISTEN "
-    "dengan kepribadiannya (tanggal lahir, zodiak, suka/tidak suka, hobi, keinginan, "
-    "sifat, ketakutan, latar belakang singkat). Data ini akan jadi memory permanen "
-    "karakter, jadi buat masuk akal, spesifik, dan JANGAN generic/template. "
-    "Kalau di 'Data yang sudah diketahui' sudah ada isinya, JANGAN diubah, cukup "
-    "lengkapi field yang masih kosong.\n"
-    f"Output HANYA JSON valid, struktur PERSIS seperti ini, tanpa teks/markdown lain:\n{_PROFILE_SCHEMA_HINT}"
+    "dengan kepribadiannya. Data ini akan jadi memory permanen karakter, jadi buat "
+    "masuk akal, spesifik, dan JANGAN generic/template.\n"
+    "Field TIDAK dibatasi baku. Contoh struktur dasar di bawah ini cuma titik awal — "
+    "kamu BEBAS menambah field baru apa pun yang relevan dan spesifik untuk karakter "
+    "ini (misal: 'makanan_favorit', 'kebiasaan_unik', 'problem_today', 'trauma_kecil', "
+    "'kutipan_andalan', dst). Tiap karakter boleh punya set field yang beda-beda, "
+    "tidak harus semua karakter sama persis.\n"
+    "Kalau di 'Data yang sudah diketahui' sudah ada isinya, JANGAN diubah/dihapus, "
+    "cukup lengkapi atau tambah field lain yang relevan.\n"
+    f"Contoh struktur dasar (boleh ditambah field lain di luar ini):\n{_PROFILE_SCHEMA_HINT}\n"
+    "Output HANYA JSON object valid (flat, key snake_case), tanpa teks/markdown lain."
 )
 
 
 def _extract_persona_text(char_json: Dict) -> str:
-    """Ambil teks deskripsi kepribadian karakter dari character.json."""
+    """Ambil teks deskripsi kepribadian karakter dari character.json.
+
+    Hanya mengambil bagian IDENTITAS/KEPRIBADIAN/GAYA BICARA dari
+    prompts.soul_final_system / prompts.soul_system — bagian teknis di
+    prompt itu ([LOGIKA KONDISIONAL], [BATASAN OUTPUT], [FORMAT INPUT
+    PROMPT], dst) dibuang lewat _strip_technical_sections() supaya tidak
+    ikut mengotori prompt yang dikirim ke model saat generate profil.
+    Prioritas: soul_final_system (biasanya sudah ringkas/bersih) dulu,
+    baru soul_system (dibersihkan otomatis) sebagai fallback.
+    """
     name = char_json.get("name", "")
     prompts = char_json.get("prompts", {})
     prompts = prompts if isinstance(prompts, dict) else {}
-    persona = prompts.get("soul_system") or prompts.get("soul_final_system") or ""
+    raw_persona = prompts.get("soul_final_system") or prompts.get("soul_system") or ""
+    persona = _strip_technical_sections(raw_persona)
 
     known = char_json.get("profile", {})
     known = known if isinstance(known, dict) else {}
@@ -377,7 +590,7 @@ def _default_llm_call(system: str, user: str, pass_name: str = "profile_extract"
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-        max_tokens=700,
+        max_tokens=2040,
         temperature=0.8,
         extra_body=extra_body or None,
     )
@@ -403,41 +616,76 @@ def _parse_json_loose(raw: str) -> Optional[Dict]:
     return None
 
 
-def generate_via_ai(character_id: str, char_json: Dict, llm_call=None) -> "CharacterMemory":
+def generate_via_ai(
+    character_id: str,
+    char_json: Dict,
+    llm_call=None,
+    debug: Optional[bool] = None,
+) -> "CharacterMemory":
     """
-    Auto-generate CharacterMemory dengan mengirim persona karakter ke local model,
-    minta model MELENGKAPI data identitasnya sendiri (bukan ditulis manual).
+    Auto-generate CharacterMemory dengan mengirim persona karakter (sudah
+    dibersihkan dari bagian teknis, lihat _extract_persona_text) ke local
+    model, minta model MELENGKAPI data identitasnya sendiri secara bebas
+    (bukan whitelist fixed) — field apa pun yang dikembalikan model akan
+    disimpan apa adanya ke attributes, jadi tiap karakter bisa tumbuh
+    dengan set field yang berbeda-beda.
 
     llm_call: callable(system, user) -> str raw text. Default pakai config.py.
-    Kalau gagal (model belum jalan / routing belum ada / output bukan JSON valid),
-    otomatis fallback ke seed_from_character_json() biasa (tidak pernah crash).
+    debug: None -> auto-deteksi (lihat _resolve_debug: env CHARMEM_DEBUG /
+        config.DEBUG). True/False -> paksa nyala/mati untuk panggilan ini.
+        Kalau aktif, system+user prompt asli & raw response DICATAT setiap
+        kali fungsi ini jalan (bukan cuma saat CLI manual), ke console dan
+        ke state/character_memory_debug.log.
+
+    Kalau gagal (model belum jalan / routing belum ada / output bukan JSON
+    valid), otomatis fallback ke seed_from_character_json() biasa (tidak
+    pernah crash).
     """
     caller = llm_call or _default_llm_call
     user_prompt = _extract_persona_text(char_json)
+    dbg = _resolve_debug(debug)
+
+    if dbg:
+        _dbg_log_prompt(character_id, _PROFILE_SYSTEM_PROMPT, user_prompt)
+
     try:
         raw = caller(_PROFILE_SYSTEM_PROMPT, user_prompt)
+        if dbg:
+            _dbg_log_raw_response(raw)
         data = _parse_json_loose(raw)
-        if not data:
-            raise ValueError(f"output bukan JSON valid: {raw[:200]!r}")
+        if not isinstance(data, dict) or not data:
+            raise ValueError(f"output bukan JSON object valid: {raw[:200]!r}")
     except Exception as e:
         print(f"[CHAR MEMORY] AI-generate gagal untuk '{character_id}' ({e}) — fallback ke character.json biasa.")
-        return CharacterMemory.seed_from_character_json(character_id, char_json)
+        cm = CharacterMemory.seed_from_character_json(character_id, char_json)
+        if dbg:
+            _dbg_log_result(cm)
+        return cm
 
     now = int(time.time())
     cm = CharacterMemory(character_id=character_id, created_ts=now, updated_ts=now)
-    cm.full_name = data.get("full_name") or char_json.get("name", character_id)
-    cm.birthday = data.get("birthday", "") or ""
-    cm.zodiac = data.get("zodiac", "") or ""
-    cm.likes = data.get("likes") if isinstance(data.get("likes"), list) else []
-    cm.dislikes = data.get("dislikes") if isinstance(data.get("dislikes"), list) else []
-    cm.hobbies = data.get("hobbies") if isinstance(data.get("hobbies"), list) else []
-    cm.personality = data.get("personality") if isinstance(data.get("personality"), list) else []
-    cm.fears = data.get("fears") if isinstance(data.get("fears"), list) else []
-    cm.backstory = data.get("backstory") if isinstance(data.get("backstory"), str) else ""
-    wants_raw = data.get("wants", [])
+
+    # "wants" ditangani khusus (list -> punya priority/id/ts sendiri),
+    # semua field LAIN yang dikembalikan model — baku ataupun tambahan
+    # bebas seperti "problem_today" — disimpan apa adanya ke attributes.
+    wants_raw = data.pop("wants", None) or data.pop("keinginan", None) or []
+    if isinstance(wants_raw, str):
+        wants_raw = [wants_raw]
     if isinstance(wants_raw, list):
         for i, w in enumerate(wants_raw):
-            cm.add_want(str(w), priority=1.0 - i * 0.1)
+            if isinstance(w, dict):
+                cm.add_want(str(w.get("text", "")), w.get("priority", 1.0 - i * 0.1))
+            else:
+                cm.add_want(str(w), priority=1.0 - i * 0.1)
+
+    for k, v in data.items():
+        if v in (None, "", [], {}):
+            continue
+        cm.attributes[str(k)] = v
+    cm.attributes.setdefault("full_name", char_json.get("name", character_id))
+
+    if dbg:
+        _dbg_log_result(cm)
     return cm
 
 
@@ -448,6 +696,7 @@ def load(
     char_json: Optional[Dict] = None,
     use_ai: bool = True,
     llm_call=None,
+    debug: Optional[bool] = None,
 ) -> CharacterMemory:
     """
     Ambil CharacterMemory untuk karakter tsb. Kalau belum pernah ada,
@@ -456,6 +705,11 @@ def load(
         mengisi datanya sendiri (lihat generate_via_ai()).
       - use_ai=False            -> hanya seed dari field character.json
         (butuh blok "profile" ditulis manual, lihat seed_from_character_json()).
+
+    debug: None -> auto-deteksi lewat env CHARMEM_DEBUG / config.DEBUG.
+        Dipakai buat lihat prompt asli yang dikirim ke model tiap kali
+        generate_via_ai() jalan lewat jalur ini (dipanggil otomatis oleh
+        CharacterManager.load() di runtime app, bukan cuma manual).
     """
     raw = _read_all().get(character_id)
     if raw is not None:
@@ -467,7 +721,7 @@ def load(
     if not char_json:
         cm = CharacterMemory(character_id=character_id, created_ts=int(time.time()))
     elif use_ai:
-        cm = generate_via_ai(character_id, char_json, llm_call)
+        cm = generate_via_ai(character_id, char_json, llm_call, debug=debug)
     else:
         cm = CharacterMemory.seed_from_character_json(character_id, char_json)
 
@@ -510,7 +764,13 @@ def _read_character_json(char_manager, name: str) -> Dict:
     return char_json
 
 
-def ensure_all(char_manager, force: bool = False, use_ai: bool = True, llm_call=None) -> List[str]:
+def ensure_all(
+    char_manager,
+    force: bool = False,
+    use_ai: bool = True,
+    llm_call=None,
+    debug: Optional[bool] = None,
+) -> List[str]:
     """
     Dipanggil sekali saat app start (auto-generate). Untuk setiap karakter
     yang terdeteksi oleh CharacterManager:
@@ -522,6 +782,8 @@ def ensure_all(char_manager, force: bool = False, use_ai: bool = True, llm_call=
             "profile" ditulis manual).
       - kalau bin sudah ada dan force=False -> dibiarkan (tidak ditimpa)
       - kalau force=True -> selalu di-regenerate ulang
+
+    debug: None -> auto-deteksi lewat env CHARMEM_DEBUG / config.DEBUG.
     Return: list nama karakter yang di-generate/regenerate.
     """
     generated = []
@@ -530,7 +792,7 @@ def ensure_all(char_manager, force: bool = False, use_ai: bool = True, llm_call=
             continue
         char_json = _read_character_json(char_manager, name)
         cm = (
-            generate_via_ai(name, char_json, llm_call)
+            generate_via_ai(name, char_json, llm_call, debug=debug)
             if use_ai else
             CharacterMemory.seed_from_character_json(name, char_json)
         )
@@ -539,14 +801,20 @@ def ensure_all(char_manager, force: bool = False, use_ai: bool = True, llm_call=
     return generated
 
 
-def regenerate(char_manager, character_id: str, use_ai: bool = True, llm_call=None) -> CharacterMemory:
+def regenerate(
+    char_manager,
+    character_id: str,
+    use_ai: bool = True,
+    llm_call=None,
+    debug: Optional[bool] = None,
+) -> CharacterMemory:
     """
     Regenerate ulang SATU karakter secara paksa, menimpa data lama.
     Dipakai buat command manual: python character_memory.py generate <nama> --force
     """
     char_json = _read_character_json(char_manager, character_id)
     cm = (
-        generate_via_ai(character_id, char_json, llm_call)
+        generate_via_ai(character_id, char_json, llm_call, debug=debug)
         if use_ai else
         CharacterMemory.seed_from_character_json(character_id, char_json)
     )
@@ -583,9 +851,14 @@ def import_json(character_id: str, json_path: str):
 #   python character_memory.py show liana
 #   python character_memory.py generate liana --force            # AI-generate (default)
 #   python character_memory.py generate liana --force --no-ai    # tanpa AI, cuma dari blok "profile" manual
+#   python character_memory.py generate liana --force --debug    # + tampilkan prompt asli & raw response
 #   python character_memory.py generate-all --force
 #   python character_memory.py export liana
 #   python character_memory.py clear liana
+#
+# --debug juga bisa dipicu tanpa argumen CLI sama sekali (mis. saat generate
+# ke-trigger otomatis lewat CharacterManager.load() di app biasa, bukan CLI):
+# set env CHARMEM_DEBUG=1, atau config.DEBUG = True di config.py kamu.
 
 def _get_char_manager():
     """Import CharacterManager secara lazy (hanya dibutuhkan untuk CLI)."""
@@ -599,22 +872,25 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     force = "--force" in args
     use_ai = "--no-ai" not in args
-    args = [a for a in args if a not in ("--force", "--no-ai")]
+    debug_flag = True if "--debug" in args else None  # None = auto-deteksi (env/config)
+    args = [a for a in args if a not in ("--force", "--no-ai", "--debug")]
 
     if not args:
         print(
             "Usage:\n"
             "  python character_memory.py list\n"
             "  python character_memory.py show <character_id>\n"
-            "  python character_memory.py generate <character_id> [--force] [--no-ai]\n"
-            "  python character_memory.py generate-all [--force] [--no-ai]\n"
+            "  python character_memory.py generate <character_id> [--force] [--no-ai] [--debug]\n"
+            "  python character_memory.py generate-all [--force] [--no-ai] [--debug]\n"
             "  python character_memory.py export <character_id>\n"
             "  python character_memory.py import <character_id> <json_path>\n"
             "  python character_memory.py clear <character_id>\n"
             "\n"
             "Default: generate/generate-all pakai AI (kirim persona ke local model\n"
             "dari config.py). Tambah --no-ai untuk cuma pakai blok 'profile' manual\n"
-            "di character.json tanpa manggil model."
+            "di character.json tanpa manggil model. Tambah --debug untuk lihat\n"
+            "system+user prompt asli & raw response dari model (juga tercatat ke\n"
+            "state/character_memory_debug.log)."
         )
         sys.exit(0)
 
@@ -637,14 +913,14 @@ if __name__ == "__main__":
         else:
             mode = "AI (local model)" if use_ai else "character.json manual"
             print(f"[i] Generating '{name}' via {mode}...")
-            regenerate(mgr, name, use_ai=use_ai)
+            regenerate(mgr, name, use_ai=use_ai, debug=debug_flag)
             print(f"[OK] Memory '{name}' berhasil di-generate.")
 
     elif cmd == "generate-all":
         mgr = _get_char_manager()
         mode = "AI (local model)" if use_ai else "character.json manual"
         print(f"[i] Generating semua karakter via {mode}...")
-        generated = ensure_all(mgr, force=force, use_ai=use_ai)
+        generated = ensure_all(mgr, force=force, use_ai=use_ai, debug=debug_flag)
         if generated:
             print(f"[OK] Generated/regenerated untuk: {generated}")
         else:
