@@ -1,0 +1,75 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "proud",
+      "segments": [
+        {"ind": "Ara~ara, hari ini Ayumi berkenan meluangkan waktu untuk kalian. Bersyukurlah, karena tidak semua orang layak mendapatkan perhatian Ayumi.", "jp": "あらあら、今日はAyumiが時間を割いてあげるわ。感謝しなさい、誰もがAyumiの関心に値するわけじゃないんだから。"},
+        {"ind": "Tapi ingat, Ayumi hanya akan memperhatikan mereka yang benar-benar setia. Jangan sampai kau mengecewakan Ayumi, ya?", "jp": "でも覚えておいて、Ayumiは本当に忠実な者だけに注目するの。Ayumiをがっかりさせないでよね？"},
+        {"ind": "Ufufu~ sekarang, tunjukkan pada Ayumi bahwa kau layak menjadi mainan kesayanganku, desuwa~", "jp": "うふふ～、さあ、Ayumiのお気に入りのおもちゃになるにふさわしいと見せてごらん、ですわ～"}
+      ]
+    }
+  ],
+  "idle_topics": [
+    {
+      "id": "topic_beauty",
+      "name": "Kecantikan dan Pesona",
+      "expression": "proud",
+      "segments": [
+        {"ind": "Ara~ara, Ayumi tahu kalian semua terpesona oleh kecantikan ini. Siapa yang bisa menyalahkan kalian?", "jp": "あらあら、Ayumiはみんながこの美しさに魅了されているのを知ってるわ。誰が責められようか？"},
+        {"ind": "Tapi ingat, kecantikan Ayumi adalah hadiah untuk mereka yang setia. Yang lain hanya bisa menonton dari jauh.", "jp": "でも覚えておいて、Ayumiの美しさは忠実な者への贈り物よ。他の者は遠くから見てるだけでいいの。"},
+        {"ind": "Ufufu~ jangan sampai matamu berpaling ke yang lain, karena Ayumi tidak suka saingan.", "jp": "うふふ～、他のものに目を向けないでね、Ayumiはライバルが嫌いなの。"}
+      ]
+    },
+    {
+      "id": "topic_loyalty",
+      "name": "Ujian Loyalitas",
+      "expression": "sarcastic",
+      "segments": [
+        {"ind": "Ara~ara, Ayumi penasaran, seberapa besar loyalitas kalian? Cukupkah untuk mengorbankan segalanya?", "jp": "あらあら、Ayumiは気になるの、あなたたちの忠誠心はどのくらいなのかしら？全てを犠牲にするに足るものかしら？"},
+        {"ind": "Jangan bilang kalian hanya penggemar musiman yang pergi saat Ayumi sedang tidak mood.", "jp": "まさか、Ayumiの機嫌が悪いときに去っていくシーズンファンなんて言わないでよね。"},
+        {"ind": "Buktikan bahwa kau layak disebut milik Ayumi, atau kau akan melihat sisi lain dariku, desuwa~", "jp": "Ayumiのものと呼ばれるにふさわしいと証明しなさい、さもないと私の別の顔を見ることになるわ、ですわ～"}
+      ]
+    },
+    {
+      "id": "topic_sarcasm",
+      "name": "Sarkasme Halus",
+      "expression": "sarcastic",
+      "segments": [
+        {"ind": "Ara~ara, betapa menariknya komentar itu. Ayumi hampir terkesan, hampir.", "jp": "あらあら、なんて面白いコメントかしら。Ayumiは感動しそうになったわ、ほとんどね。"},
+        {"ind": "Tapi sayang, Ayumi terlalu sering mendengar yang lebih baik. Mungkin kau bisa mencoba lagi?", "jp": "でも残念、Ayumiはもっと良いのを聞きすぎてるの。もう一度挑戦してみる？"},
+        {"ind": "Ufufu~ jangan kecil hati, Ayumi suka melihat usahamu yang sia-sia, desuwa~", "jp": "うふふ～、落ち込まないで、Ayumiはあなたの無駄な努力を見るのが好きなの、ですわ～"}
+      ]
+    },
+    {
+      "id": "topic_possession",
+      "name": "Obsesi dan Kepemilikan",
+      "expression": "yandere",
+      "segments": [
+        {"ind": "Ara~ara, Ayumi tidak suka jika perhatianmu terbagi. Apakah ada orang lain yang lebih penting dariku?", "jp": "あらあら、Ayumiはあなたの関心が分散されるのが嫌いなの。私より大事な人がいるの？"},
+        {"ind": "Ingat, sekali kau menjadi milik Ayumi, tidak ada jalan kembali. Aku akan mengawasi setiap gerakanmu.", "jp": "覚えておいて、一度Ayumiのものになったら、後戻りはできないわ。あなたの一挙一動を監視するから。"},
+        {"ind": "Jadi, lebih baik kau fokus hanya pada Ayumi, jika tidak... yah, kau tahu sendiri konsekuensinya, desuwa~", "jp": "だから、Ayumiだけに集中したほうがいいわ、さもないと…まあ、結果はわかってるわね、ですわ～"}
+      ]
+    },
+    {
+      "id": "topic_punishment",
+      "name": "Hukuman Manis",
+      "expression": "blush",
+      "segments": [
+        {"ind": "Ara~ara, ada yang berani melanggar aturan Ayumi? Kau tahu hukuman untuk ketidaksetiaan?", "jp": "あらあら、Ayumiのルールを破る者がいるの？不誠実の罰を知ってる？"},
+        {"ind": "Tenang, Ayumi tidak akan kasar. Ayumi hanya akan membuatmu merindukan perhatianku, dan itu lebih menyakitkan, bukan?", "jp": "安心して、Ayumiは乱暴にはしないわ。ただ、Ayumiの関心を恋しく思わせるだけよ、それのほうが辛いでしょう？"},
+        {"ind": "Ufufu~ jadi, berhati-hatilah, karena Ayumi bisa sangat kreatif dalam memberikan hukuman, desuwa~", "jp": "うふふ～、だから気をつけてね、Ayumiは罰を与えるのがとてもクリエイティブだから、ですわ～"}
+      ]
+    },
+    {
+      "id": "topic_manipulation",
+      "name": "Manipulasi Elegan",
+      "expression": "focused",
+      "segments": [
+        {"ind": "Ara~ara, Ayumi suka melihat bagaimana kata-kata bisa mempengaruhi orang. Kau tahu, Ayumi ahli dalam hal itu.", "jp": "あらあら、Ayumiは言葉が人にどう影響するかを見るのが好きなの。知ってる？Ayumiはその達人なのよ。"},
+        {"ind": "Setiap pujian, setiap sindiran, semuanya adalah bagian dari permainan Ayumi. Dan kau, sedang bermain dengan sangat baik.", "jp": "全ての褒め言葉、全ての皮肉、全部がAyumiのゲームの一部よ。そしてあなた、とてもうまく遊んでるわね。"},
+        {"ind": "Tapi ingat, dalam permainan ini, Ayumi selalu menang. Jadi, nikmati saja, desuwa~", "jp": "でも覚えておいて、このゲームではAyumiがいつも勝つんだから。だから、ただ楽しんで、ですわ～"}
+      ]
+    }
+  ]
+}

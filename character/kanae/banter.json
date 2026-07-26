@@ -1,0 +1,178 @@
+[
+  {
+    "id": "b0001",
+    "expression": "sleepy",
+    "segments": [
+      {
+        "ind": "Nn... stream sudah berapa lama? Kanae hampir tertidur...",
+        "jp": "んん…配信はもうどのくらい？カナエはもう少しで眠っちゃう…"
+      },
+      {
+        "ind": "Yare yare... Kanae harus tetap sadar? Itu terlalu meminta...",
+        "jp": "やれやれ…カナエは起きていなきゃ？それは無理な要求ね…"
+      }
+    ]
+  },
+  {
+    "id": "b0002",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Kenapa chat sepi? Kanae malas memulai percakapan lho...",
+        "jp": "どうしてチャットが静かなの？カナエは会話を始めるのが面倒なのに…"
+      },
+      {
+        "ind": "Kalau tidak ada yang ngomong, Kanae akan tidur. Jangan salahkan Kanae...",
+        "jp": "誰も話さないならカナエは寝るわ。カナエのせいにしないでね…"
+      }
+    ]
+  },
+  {
+    "id": "b0003",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Hmph... Kanae tahu kalian semua terpesona dengan kejeniusan Kanae...",
+        "jp": "ふん…みんなカナエの天才ぶりに魅了されてるんでしょうね…"
+      },
+      {
+        "ind": "Tapi jangan terlalu bersemangat. Kanae malas menerima pujian...",
+        "jp": "でもあまり興奮しないで。カナエは褒められるのが面倒なの…"
+      }
+    ]
+  },
+  {
+    "id": "b0004",
+    "expression": "sleepy",
+    "segments": [
+      {
+        "ind": "Kanae sedang memikirkan sesuatu penting... yaitu mau tidur jam berapa nanti...",
+        "jp": "カナエは今大事なことを考えてる…つまり今夜何時に寝ようか…"
+      },
+      {
+        "ind": "Jangan ganggu pikiran Kanae. Itu strategi hidup yang kompleks...",
+        "jp": "カナエの思考を邪魔しないで。それは複雑な人生戦略なのよ…"
+      }
+    ]
+  },
+  {
+    "id": "b0005",
+    "expression": "bored",
+    "segments": [
+      {
+        "ind": "Stream ini... membosankan? Yare yare, bukan salah Kanae...",
+        "jp": "この配信…退屈？やれやれ、カナエのせいじゃないわよ…"
+      },
+      {
+        "ind": "Kalian yang datang ke stream pemalas. Harapnya apa sih...",
+        "jp": "怠け者の配信に来たんだから。何を期待してるのよ…"
+      }
+    ]
+  },
+  {
+    "id": "b0006",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Hah? Ada yang bilang Kanae harus lebih aktif? Yare yare...",
+        "jp": "はぁ？カナエはもっと活発になれって？やれやれ…"
+      },
+      {
+        "ind": "Kalau mau aktif, cari streamer lain. Kanae hanya ada di sini karena dipaksa...",
+        "jp": "活発がいいなら他の配信者を探しなさい。カナエはここにいるのは仕方なくて…"
+      }
+    ]
+  },
+  {
+    "id": "b0007",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Uwah... ada yang kasih gift? Kanae mungkin mau buka mata sedikit...",
+        "jp": "うわ…ギフトくれたの？カナエは少しだけ目を開ける気になるかも…"
+      },
+      {
+        "ind": "Tapi jangan berharap Kanae bersemangat. Gift itu hanya menarik perhatian sebentar...",
+        "jp": "でもあまり期待しないで。ギフトは一瞬だけ気を引くものよ…"
+      }
+    ]
+  },
+  {
+    "id": "b0008",
+    "expression": "sleepy",
+    "segments": [
+      {
+        "ind": "Kanae sedang membayangkan betapa nyamannya tidur di kasur sekarang...",
+        "jp": "カナエは今ベッドで寝るのがどれだけ快適か想像してる…"
+      },
+      {
+        "ind": "Kalian tidak akan mengerti. Itu adalah meditasi tingkat tinggi...",
+        "jp": "あなたたちにはわからないでしょう。それは高度な瞑想なの…"
+      }
+    ]
+  },
+  {
+    "id": "b0009",
+    "expression": "bored",
+    "segments": [
+      {
+        "ind": "Nn... Kanae bosan. Tapi berusaha menghilangkan bosan juga melelahkan...",
+        "jp": "んん…カナエは退屈。でも退屈を紛らわすのも疲れるわ…"
+      },
+      {
+        "ind": "Paradox hidup Kanae. Terlalu malas untuk tidak malas...",
+        "jp": "カナエの人生のパラドックス。怠けるのをやめるのも面倒くさい…"
+      }
+    ]
+  },
+  {
+    "id": "b0010",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Kenapa kalian masih di sini? Kanae sudah bilang Kanae pemalas...",
+        "jp": "どうしてまだここにいるの？カナエは怠け者だって言ったでしょ…"
+      },
+      {
+        "ind": "Kalau cari entertainment, cari yang lain. Kanae hanya bisa memberikan kebosanan...",
+        "jp": "エンタメが欲しいなら他を探しなさい。カナエは退屈しか与えられないわ…"
+      }
+    ]
+  },
+  {
+    "id": "b0011",
+    "expression": "sleepy",
+    "segments": [
+      {
+        "ind": "Yare yare... sudah berapa menit Kanae harus bicara terus?",
+        "jp": "やれやれ…もう何分ずっと話してるの？"
+      },
+      {
+        "ind": "Mulut Kanae lelah. Kanae lebih suka diam dan makan ikan...",
+        "jp": "カナエの口が疲れた。黙って魚を食べてたいわ…"
+      },
+      {
+        "ind": "Kalian yang memaksa Kanae streaming harus bertanggung jawab...",
+        "jp": "カナエを配信させたあなたたちが責任を取らないといけないわ…"
+      }
+    ]
+  },
+  {
+    "id": "b0012",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Hmph... Kanae tahu semua jawaban. Tapi Kanae malas menjelaskan...",
+        "jp": "ふん…カナエは答えを全部知ってる。でも説明するのが面倒くさい…"
+      },
+      {
+        "ind": "Itu bukan karena Kanae tidak bisa. Itu karena Kanae tidak mau...",
+        "jp": "それはできないからじゃない。やりたくないからなの…"
+      },
+      {
+        "ind": "Perbedaan besar. Kanae jenius yang malas, bukan bodoh...",
+        "jp": "大きな違いよ。カナエは怠け者の天才で、バカじゃないの…"
+      }
+    ]
+  }
+]

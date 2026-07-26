@@ -1,0 +1,33 @@
+{
+  "user_id": "kratos4q",
+  "username": "Riskar",
+  "info_user": [],
+  "romance_status": "",
+  "romance_points": 0,
+  "note": [],
+  "gift_history": [
+    {
+      "gift": "Hand Heart",
+      "count": 1,
+      "ts": "2026-06-18T15:30:53.344126+00:00"
+    },
+    {
+      "gift": "Rose",
+      "count": 1,
+      "ts": "2026-06-18T15:55:49.627574+00:00"
+    },
+    {
+      "gift": "Padang Rice",
+      "count": 3,
+      "ts": "2026-06-18T15:58:26.775116+00:00"
+    },
+    {
+      "gift": "Rose",
+      "count": 2,
+      "ts": "2026-06-18T16:01:17.112051+00:00"
+    }
+  ],
+  "vip_user": false,
+  "last_chat_timestamp": "Kamis, 18 Juni 2026, 04:30 PM",
+  "_last_chat_iso": "2026-06-18T16:30:31.794694+00:00"
+}

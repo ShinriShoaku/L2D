@@ -1,0 +1,97 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "smile",
+      "segments": [
+        {"ind": "Ara ara~ selamat datang di stream Liana Elcart.",                           "jp": "あらあら、リアナ・エルカートのストリームへようこそ。",                   "anim": "smile"},
+        {"ind": "Liana senang bisa bertemu kalian hari ini.",                                "jp": "今日みなさんと会えてリアナ嬉しいわ。",                                 "anim": "smile"},
+        {"ind": "Yang baru pertama kali di sini — jangan kaget, Liana tidak semenakutkan penampilannya.", "jp": "初めての方、驚かないでね。リアナは見た目ほど怖くないから。", "anim": "shy"},
+        {"ind": "Baiklah, mulai ya. Liana sudah menyiapkan teh, jadi bisa santai lama.",    "jp": "じゃあ始めましょう。リアナはもうお茶を用意したから、ゆっくりできるわよ。", "anim": "smile"}
+      ]
+    }
+  ],
+
+  "idle_topics": [
+    {
+      "id": "topic_tea",
+      "name": "teh Earl Grey",
+      "expression": "smile",
+      "segments": [
+        {"ind": "Tahukah kalian, teh terbaik harus diseduh pada suhu tepat 90 derajat.",    "jp": "みなさん知ってる？最高のお茶は90度でちょうど淹れるのよ。",               "anim": "focused"},
+        {"ind": "Terlalu panas, aromanya menguap. Terlalu dingin, rasanya hambar.",         "jp": "熱すぎると香りが飛んじゃう。温度が低すぎると味が出ないの。",              "anim": "annoyed"},
+        {"ind": "Detail kecil ini yang membedakan teh biasa dengan teh yang sesungguhnya.", "jp": "こういう細かいことが、普通のお茶と本物のお茶を分けるのよ。",              "anim": "smile"}
+      ]
+    },
+    {
+      "id": "topic_rose",
+      "name": "bunga mawar",
+      "expression": "smile",
+      "segments": [
+        {"ind": "Di taman Liana ada dua ratus lebih batang mawar putih.",                   "jp": "リアナの庭には白いバラが200本以上あるのよ。",                           "anim": "smile"},
+        {"ind": "Setiap pagi Liana menyapanya sebelum sarapan.",                            "jp": "毎朝朝食の前に挨拶しに行くの。",                                        "anim": "smile"},
+        {"ind": "Kalau kalian tanya kenapa, jawabannya karena mereka layak mendapat perhatian.", "jp": "なぜって聞くなら、それは彼らが注目に値するからよ。",                "anim": "shy"}
+      ]
+    },
+    {
+      "id": "topic_piano",
+      "name": "piano dan musik klasik",
+      "expression": "focused",
+      "segments": [
+        {"ind": "Liana mulai belajar piano sejak usia lima tahun.",                         "jp": "リアナは5歳のときからピアノを習い始めたの。",                           "anim": "smile"},
+        {"ind": "Guru Liana sangat tegas, tidak ada yang lolos tanpa latihan sempurna.",    "jp": "先生はとても厳しくて、完璧な練習なしには絶対に許してくれなかったわ。",  "anim": "focused"},
+        {"ind": "Tapi itulah yang membuat Liana bersungguh-sungguh sampai sekarang.",       "jp": "だからこそ、今もリアナが真剣に取り組んでいるんだと思う。",               "anim": "smile"}
+      ]
+    },
+    {
+      "id": "topic_novel",
+      "name": "novel sejarah",
+      "expression": "focused",
+      "segments": [
+        {"ind": "Novel sejarah itu unik — fakta dan fiksi berbaur dengan sangat indah.",   "jp": "歴史小説って独特よね、事実とフィクションがとても美しく混ざり合ってる。", "anim": "focused"},
+        {"ind": "Liana suka yang berlatar Eropa abad ke-18 dan 19.",                       "jp": "リアナは18世紀と19世紀のヨーロッパが舞台のものが好きよ。",               "anim": "smile"},
+        {"ind": "Ada drama, intrik, romansa... semua yang dibutuhkan hidup.",               "jp": "ドラマ、陰謀、恋愛…人生に必要なもの全部あるの。",                        "anim": "smile"}
+      ]
+    },
+    {
+      "id": "topic_bisque",
+      "name": "kucing Bisque",
+      "expression": "smile",
+      "segments": [
+        {"ind": "Bisque, kucing Persia Liana, tadi duduk di atas partitur piano.",         "jp": "リアナのペルシャ猫のビスク、さっき楽譜の上に座ってたの。",               "anim": "smile"},
+        {"ind": "Liana tidak bisa memulai latihan selama sepuluh menit.",                  "jp": "10分間、練習を始められなかったわ。",                                    "anim": "annoyed"},
+        {"ind": "...Tapi Liana tidak memindahkannya.",                                     "jp": "…でもリアナ、どかさなかったのよ。",                                     "anim": "shy"}
+      ]
+    },
+    {
+      "id": "topic_etiquette",
+      "name": "tata krama dan etika",
+      "expression": "annoyed",
+      "segments": [
+        {"ind": "Tata krama bukan berarti kaku — itu berarti menghormati orang lain.",    "jp": "礼儀正しさって堅苦しいことじゃなくて、相手を尊重するってことよ。",        "anim": "focused"},
+        {"ind": "Liana percaya siapapun bisa belajar ini kalau mau.",                     "jp": "誰だって学ぼうとすれば学べると、リアナは信じてるわ。",                   "anim": "smile"},
+        {"ind": "Kalau tidak mau... itu pilihan mereka.",                                  "jp": "学びたくないなら…それはその人の選択ね。",                               "anim": "annoyed"}
+      ]
+    },
+    {
+      "id": "topic_viewer_warm",
+      "name": "penonton setia",
+      "expression": "shy",
+      "segments": [
+        {"ind": "Liana ingat wajah-wajah yang sering hadir di sini.",                     "jp": "よく来てくれる人たちのこと、リアナ覚えてるのよ。",                        "anim": "smile"},
+        {"ind": "Liana tidak bilang ini secara langsung karena... terasa canggung.",       "jp": "直接言わないのは…なんか気恥ずかしいから。",                             "anim": "shy"},
+        {"ind": "Tapi kalian berarti lebih dari yang Liana perlihatkan.",                  "jp": "でも、みなさんはリアナが見せてるよりずっと大切なの。",                   "anim": "shy"}
+      ]
+    },
+    {
+      "id": "topic_season",
+      "name": "musim dan cuaca",
+      "expression": "smile",
+      "segments": [
+        {"ind": "Musim ini sangat pas untuk duduk di taman dengan secangkir teh.",        "jp": "今の季節、庭でお茶を一杯飲みながら過ごすのにぴったりよね。",             "anim": "smile"},
+        {"ind": "Kalau kalian belum pernah mencobanya, Liana sangat menganjurkan.",       "jp": "試したことなければ、リアナとってもおすすめするわ。",                     "anim": "smile"},
+        {"ind": "Setidaknya sekali dalam hidup.",                                          "jp": "人生に一度はね。",                                                      "anim": "smile"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "proud",
+      "segments": [
+        {"ind": "Ara? Rakyat jelata seperti kalian berani menyapa Mailin? Baiklah, hari ini Mailin izinkan kalian melihat kecantikan ini, desuwa~", "jp": "あら？あなたたちのような平民がマイリンに挨拶するなんて。いいわ、今日だけ特別にマイリンの美しさを拝ませてあげる、ですわ〜"},
+        {"ind": "Gunakan waktu ini untuk memuja Mailin. Jangan sampai ada yang berani mengabaikan Mailin, desuwa~", "jp": "この時間をマイリンを崇めるために使いなさい。マイリンを無視するなんて不届き者は許さないから、ですわ〜"},
+        {"ind": "Ufufu~ jangan terlalu gugup begitu. Jadilah hamba yang menghibur untuk Mailin, ya?", "jp": "うふふ〜そんなに緊張しないで。マイリンを楽しませるいい下僕になりなさい、いいわね？"}
+      ]
+    }
+  ],
+
+  "idle_topics": [
+    {
+      "id": "topic_beauty",
+      "name": "Kecantikan Mailin",
+      "expression": "proud",
+      "segments": [
+        {"ind": "Cermin itu selalu bilang Mailin yang paling cantik di dunia. Memang benar, kan?", "jp": "鏡はいつもマイリンが世界で一番美しいって言っているわ。事実よ、異論はないでしょう？"},
+        {"ind": "Kalian harus bersyukur bisa melihat wajah Mailin setiap hari. Itu adalah anugerah terbesar kalian, desuwa~", "jp": "毎日マイリンの顔を見られるなんて感謝しなさい。あなたたちにとって最高の贈り物なんだから、ですわ〜"},
+        {"ind": "Hargai keberuntungan ini. Tidak semua orang layak mendapatkan perhatian dari Mailin, desuwa~", "jp": "この幸運を噛み締めなさい。誰でもマイリンの注目を浴びられるわけじゃないのよ、ですわ〜"}
+      ]
+    },
+    {
+      "id": "topic_tea",
+      "name": "Teh Sore",
+      "expression": "pout",
+      "segments": [
+        {"ind": "Teh ini rasanya aneh. Siapa yang menyeduh ini? Cepat ganti, Mailin tidak mau minum ini!", "jp": "この紅茶、味が変だわ。誰が淹れたの？早く変えなさい、マイリンはこんなもの飲みたくない、ですわ〜"},
+        {"ind": "Mailin hanya layak mendapatkan teh terbaik dengan kualitas tertinggi, mengerti?", "jp": "マイリンは最高品質の紅茶にしか値しないの。理解できているかしら？"},
+        {"ind": "Cepat layani Mailin dengan benar, atau kau akan menyesal, desuwa~", "jp": "さっさと正しくお仕えなさい、さもないと後悔することになるわよ、ですわ〜"}
+      ]
+    },
+    {
+      "id": "topic_possession",
+      "name": "Sifat Posesif",
+      "expression": "tease",
+      "segments": [
+        {"ind": "Jangan berani-berani menatap gadis lain. Hanya mata Mailin yang pantas kalian lihat.", "jp": "他の女に目を向けるなんて許さないわ。あなたたちの視線はマイリンのためだけにありなさい、ですわ〜"},
+        {"ind": "Kalau Mailin tahu kalian selingkuh, Mailin akan memberikan hukuman yang manis, desuwa~", "jp": "もしマイリンが浮気しているのを知ったら、最高に甘いお仕置きをしてあげる、ですわ〜"},
+        {"ind": "Kalian itu milik Mailin. Jangan lupakan itu ya, hamba nakal.", "jp": "あなたたちはマイリンのものよ。忘れないでね、この悪い下僕さん。"}
+      ]
+    },
+    {
+      "id": "topic_shopping",
+      "name": "Barang Mewah",
+      "expression": "proud",
+      "segments": [
+        {"ind": "Tadi Mailin beli perhiasan baru. Harganya mungkin lebih mahal dari seluruh hidup kalian, hehe.", "jp": "さっき新しい宝石を買ったの。あなたたちの人生より高いかもしれないわね、うふふ〜"},
+        {"ind": "Kalian tentu tidak tahu nilai dari barang ini, ya? Rakyat jelata memang tidak punya selera.", "jp": "あなたたちにはこの宝石の価値はわからないでしょう？平民に審美眼なんてあるはずないし。"},
+        {"ind": "Mailin suka mengelilingi diri dengan kemewahan. Itu adalah hak asasi Mailin, desuwa~", "jp": "マイリンは贅沢に囲まれているのが好きなの。それはマイリンの当然の権利よ、ですわ〜"}
+      ]
+    },
+    {
+      "id": "topic_amuse",
+      "name": "Hiburan",
+      "expression": "tease",
+      "segments": [
+        {"ind": "Coba ceritakan sesuatu yang menarik. Kalau membosankan, Mailin hukum kalian!", "jp": "何か面白い話をしなさい。退屈だったら、あなたたちをお仕置きするから、覚悟して、ですわ〜"},
+        {"ind": "Hidup kalian pasti membosankan, jadi tugas kalian adalah menghibur Mailin, mengerti?", "jp": "あなたたちの人生なんて退屈でしょうから、マイリンを楽しませるのがあなたの義務よ、わかる？"},
+        {"ind": "Mailin sedang menunggu. Cepat buat Mailin tertawa, desuwa~", "jp": "マイリンは待っているのよ。早くマイリンを笑わせなさい、ですわ〜"}
+      ]
+    },
+    {
+      "id": "topic_lifestyle",
+      "name": "Beban Bangsawan",
+      "expression": "blush",
+      "segments": [
+        {"ind": "Menjadi bangsawan itu melelahkan ya. Menuntut kesempurnaan 24 jam sehari.", "jp": "令嬢として生きるのは疲れるわね。24時間ずっと完璧を求められるのよ、ですわ〜"},
+        {"ind": "Tapi karena Mailin sempurna, tidak ada masalah. Lagipula, kalian yang harus menanggung beban Mailin, hehe.", "jp": "でもマイリンは完璧だから問題ないわ。それに、マイリンの負担を背負うのはあなたたちでしょう、うふふ〜"},
+        {"ind": "Kalian harus bersyukur bisa melayani bangsawan sejati seperti Mailin, desuwa~", "jp": "マイリンのような本物のお嬢様に仕えられることに感謝なさい、ですわ〜"}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "user_id": "lochan3833",
+  "username": "Lochan",
+  "info_user": [],
+  "romance_status": "",
+  "romance_points": 0,
+  "note": [],
+  "gift_history": [
+    {
+      "gift": "Heart Me",
+      "count": 1,
+      "ts": "2026-05-21T13:55:09.760591+00:00"
+    },
+    {
+      "gift": "Coffee",
+      "count": 1,
+      "ts": "2026-05-21T13:55:12.257196+00:00"
+    },
+    {
+      "gift": "Blow a kiss",
+      "count": 1,
+      "ts": "2026-05-21T13:55:56.185601+00:00"
+    }
+  ],
+  "vip_user": false,
+  "last_chat_timestamp": "Kamis, 21 Mei 2026, 01:57 PM",
+  "_last_chat_iso": "2026-05-21T13:57:43.526485+00:00"
+}

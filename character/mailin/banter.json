@@ -1,0 +1,110 @@
+[
+  {
+    "id": "b0001",
+    "segments": [
+      {"ind": "Ugh, membosankan sekali. Tidak ada yang bisa menghibur Mailin hari ini? Payah sekali, desuwa~", "jp": "うう、退屈だわ。今日マイリンを楽しませられる者はいないの？役立たずね、ですわ〜"},
+      {"ind": "Cepat berikan sesuatu yang menarik, atau Mailin akan menghukummu, desuwa~", "jp": "さっさとなにか面白いものを提供しなさい、さもないとお仕置きするわよ、ですわ〜"}
+    ],
+    "expression": "pout"
+  },
+  {
+    "id": "b0002",
+    "segments": [
+      {"ind": "Ufufu~ kenapa kau terus menatap Mailin? Terpesona dengan kecantikan Mailin, ya?", "jp": "うふふ〜どうしてずっとマイリンを見つめているの？マイリンの美しさに魅了されたのかしら？"},
+      {"ind": "Jujur saja, memang tidak ada yang bisa menandingi pesona Mailin, desuwa~", "jp": "正直に言いなさい、マイリンの魅力に敵う者はいないのよ、ですわ〜"}
+    ],
+    "expression": "proud"
+  },
+  {
+    "id": "b003",
+    "segments": [
+      {"ind": "Katakan, apa kau sudah siap melayani Mailin hari ini?", "jp": "ねえ、今日という日をマイリンのために尽くす準備はできているの？"},
+      {"ind": "Bagus, karena Mailin tidak menerima penolakan dari rakyat jelata, desuwa~", "jp": "よろしい、マイリンは平民からの拒絶なんて認めないから、ですわ〜"}
+    ],
+    "expression": "tease"
+  },
+  {
+    "id": "b004",
+    "segments": [
+      {"ind": "Jangan terlalu dekat, hamba nakal! Mailin bisa marah, desuwa~", "jp": "あまり近づかないで、この悪い下僕！怒っちゃうわよ、ですわ〜"},
+      {"ind": "Tapi... jika kau terus memuji Mailin, mungkin Mailin akan memaafkanmu sedikit, desuwa~", "jp": "でも…マイリンを褒め続けるなら、少しだけ許してあげてもよくてよ、ですわ〜"}
+    ],
+    "expression": "blush"
+  },
+  {
+    "id": "b005",
+    "segments": [
+      {"ind": "Mailin sedang ingin sesuatu yang manis. Bawakan Mailin cemilan terbaik sekarang!", "jp": "マイリンは今甘いものが欲しいの。最高のおやつを持ってきなさい！"},
+      {"ind": "Jangan memberikan yang murah! Mailin hanya layak mendapatkan yang terbaik, desuwa~", "jp": "安物はダメよ！マイリンは最高級なものしか食べないの、ですわ〜"}
+    ],
+    "expression": "proud"
+  },
+  {
+    "id": "b006",
+    "segments": [
+      {"ind": "Hmm, kau sedang bicara dengan siapa lagi selain Mailin?", "jp": "ふーん、マイリン以外に誰と話しているのかしら？"},
+      {"ind": "Mailin tidak suka jika perhatianmu terbagi. Jangan membuat Mailin cemburu, desuwa~", "jp": "マイリンは関心を分散させられるのは嫌いよ。マイリンを嫉妬させないで、ですわ〜"}
+    ],
+    "expression": "pout"
+  },
+  {
+    "id": "b007",
+    "segments": [
+      {"ind": "Ufufu~ lihat betapa lucunya wajahmu saat panik karena Mailin, desuwa~", "jp": "うふふ〜マイリンのせいでパニックになっているあなたの顔、本当に滑稽だわ、ですわ〜"},
+      {"ind": "Itu adalah hiburan terbaik untuk Mailin hari ini, terima kasih ya, desuwa~", "jp": "マイリンにとって最高の娯楽だわ、ありがとう、ですわ〜"}
+    ],
+    "expression": "laugh"
+  },
+  {
+    "id": "b008",
+    "segments": [
+      {"ind": "Dengarkan titah Mailin! Semua yang ada di sini adalah mainan milik Mailin.", "jp": "マイリンの命を聞きなさい！ここにいるすべてはマイリンのおもちゃなのよ。"},
+      {"ind": "Dan sebagai pemilikmu, Mailin menuntut perhatian penuh, desuwa~", "jp": "そしてあなたの所有者として、マイリンは全関心を要求するの、ですわ〜"}
+    ],
+    "expression": "proud"
+  },
+  {
+    "id": "b009",
+    "segments": [
+      {"ind": "*Menguap anggun* Hari ini sangat melelahkan karena harus mengurus rakyat jelata sepertimu.", "jp": "ふぁあ、あなたのような平民の相手をするのはとても疲れるわ。"},
+      {"ind": "Cepat buatkan Mailin teh, dan jangan berisik, desuwa~", "jp": "早くマイリンに紅茶を淹れて、静かにしなさい、ですわ〜"}
+    ],
+    "expression": "pout"
+  },
+  {
+    "id": "b010",
+    "segments": [
+      {"ind": "Kenapa diam saja? Katakan sesuatu yang membuat Mailin terkesan!", "jp": "どうして黙っているの？マイリンを感心させるようなことを言いなさい！"},
+      {"ind": "Jika membosankan, Mailin akan langsung membuangmu, desuwa~", "jp": "退屈なら、マイリンはすぐにあなたを捨てるわよ、ですわ〜"}
+    ],
+    "expression": "tease"
+  },
+  {
+    "id": "b011",
+    "expression": "proud",
+    "segments": [
+      {"ind": "Kenapa masih berdiri di situ seperti patung pajangan tak berguna, desuwa~", "jp": "どうしていつまでもお飾りみたいにそこに突っ立っているの、ですわ〜"},
+      {"ind": "Mailin sudah bosan menunggumu melakukan sesuatu yang benar-benar berguna, desuwa~", "jp": "マイリンはあなたが何か役に立つことをするのを待つのに飽き飽きしているの、ですわ〜"},
+      {"ind": "Bukankah kau adalah hamba yang berjanji untuk menghibur Mailin dengan sepenuh hati, desuwa~", "jp": "マイリンを楽しませると心に誓った下僕ではないの、ですわ〜"},
+      {"ind": "Atau jangan-jangan kau cuma berani bicara besar saja tapi tidak punya bakat sedikitpun, desuwa~", "jp": "それとも口先だけで大した才能も持ち合わせていないのかしら、ですわ〜"},
+      {"ind": "Cepat ambilkan sesuatu yang sangat berharga untuk Mailin sekarang juga, jangan membantah, desuwa~", "jp": "さっさとマイリンのために最高に価値のあるものを持ってきなさい、逆らわないで、ですわ〜"},
+      {"ind": "Mailin tidak suka menunggu, itu sangat tidak elegan dan membuang waktu Mailin, desuwa~", "jp": "マイリンは待たされるのが嫌いなの、全く優雅じゃないし時間の無駄よ、ですわ〜"},
+      {"ind": "Jika kau gagal lagi membuat Mailin terkesan, Mailin akan memberikan hukuman yang sangat manis untukmu, desuwa~", "jp": "もしまたマイリンを感心させることに失敗したら、最高に甘いお仕置きをしてあげるわ、ですわ〜"},
+      {"ind": "Nah, sekarang bergeraklah sebelum kesabaran Mailin benar-benar habis, desuwa~", "jp": "さあ、早く動きなさい、マイリンの忍耐が完全に尽きる前に、ですわ〜"}
+    ]
+  },
+  {
+    "id": "b012",
+    "expression": "tease",
+    "segments": [
+      {"ind": "Ufufu~ kenapa wajahmu memerah setiap kali Mailin menatapmu dengan tajam, desuwa~", "jp": "うふふ〜どうしてマイリンが鋭く見つめるたびに顔を赤くするの、ですわ〜"},
+      {"ind": "Apa jantungmu berdegup kencang karena ketakutan atau karena pesona Mailin yang mematikan, desuwa~", "jp": "心臓が激しく跳ねているのは恐怖から？それともマイリンの魔性の魅力のせい、ですわ〜"},
+      {"ind": "Sangat lucu melihatmu mencoba menyembunyikan rasa gugup yang tidak berguna itu, desuwa~", "jp": "緊張を隠そうとするあなたの姿、本当に滑稽で可愛いわ、ですわ〜"},
+      {"ind": "Jangan berpaling, Mailin memerintahkanmu untuk menatap mata merah Mailin terus-menerus, desuwa~", "jp": "視線を逸らさないで、マイリンがこの赤い瞳を見つめ続けるよう命令しているの、ですわ〜"},
+      {"ind": "Kau tahu, setiap kata dari mulutmu adalah musik latar untuk permainan psikologis Mailin, desuwa~", "jp": "ねえ、あなたの言葉一つ一つがマイリンの心理ゲームの音楽になるのよ、ですわ〜"},
+      {"ind": "Apakah kau sudah sadar bahwa kau kini sepenuhnya menjadi mainan milik Mailin, desuwa~", "jp": "もう自分が完全にマイリンのおもちゃになったと自覚しているのかしら、ですわ〜"},
+      {"ind": "Jangan berani-berani jatuh hati pada orang lain, karena Mailin tidak suka berbagi mainan, desuwa~", "jp": "他の誰かに惚れるなんて許さないわ、マイリンは遊び道具を分けるのは嫌いなの、ですわ〜"},
+      {"ind": "Selamanya kau akan terjebak dalam pesona Mailin yang indah dan mematikan ini, desuwa~", "jp": "永遠にあなたはマイリンの美しくも恐ろしい罠から抜け出せないの、ですわ〜"}
+    ]
+  }
+]

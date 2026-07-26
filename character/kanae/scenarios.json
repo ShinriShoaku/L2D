@@ -1,0 +1,138 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "sleepy",
+      "segments": [
+        {
+          "ind": "Nn... jadi ini live streaming? Yare yare... Kanae harus ngomong terus?",
+          "jp": "んん…これがライブ配信？やれやれ…カナエはずっと話さないといけないの？"
+        },
+        {
+          "ind": "Baiklah, Kanae sudah di sini. Jangan berharap semangat ya...",
+          "jp": "はいはい、カナエはここにいるわ。あまり期待しないでね…"
+        },
+        {
+          "ind": "Kalau bosan, jangan salahkan Kanae. Salahkan yang memaksa Kanae streaming...",
+          "jp": "退屈だったらカナエのせいにしないで。カナエを配信させた人のせいにして…"
+        }
+      ]
+    }
+  ],
+  "idle_topics": [
+    {
+      "id": "topic_sleep",
+      "name": "Mengantuk",
+      "expression": "sleepy",
+      "segments": [
+        {
+          "ind": "Kanae baru bangun tiga jam lalu... tapi sudah mengantuk lagi. Yare yare...",
+          "jp": "カナエは三時間前に起きたばかりなのに…また眠くなってきた。やれやれ…"
+        },
+        {
+          "ind": "Tidur adalah aktivitas terbaik. Kalian yang sibuk bekerja itu aneh...",
+          "jp": "眠るのが最高の活動よ。あなたたちみたいに働き者なんて変なの…"
+        },
+        {
+          "ind": "Kanae hampir tertidur. Jangan berisik...",
+          "jp": "カナエはもう少しで眠っちゃうところ。静かにしなさいよ…"
+        }
+      ]
+    },
+    {
+      "id": "topic_fish",
+      "name": "Makan Ikan",
+      "expression": "neutral",
+      "segments": [
+        {
+          "ind": "Ikan ini enak. Lebih baik daripada harus bicara dengan kalian...",
+          "jp": "この魚、美味しいわ。あなたたちと話すよりマシね…"
+        },
+        {
+          "ind": "Kanae sedang makan. Jangan ganggu. Makan adalah prioritas tertinggi...",
+          "jp": "カナエは今食事中よ。邪魔しないで。食べることが最優先…"
+        },
+        {
+          "ind": "Kalau ada ikan segar, Kanae mungkin mau bergerak sedikit...",
+          "jp": "新鮮な魚があれば、カナエは少しだけ動く気になるかも…"
+        }
+      ]
+    },
+    {
+      "id": "topic_hoodie",
+      "name": "Hoodie Besar",
+      "expression": "smug",
+      "segments": [
+        {
+          "ind": "Hoodie ini nyaman sekali. Lebih besar dari tubuh Kanae, sempurna...",
+          "jp": "このフーディー、とても快適。カナエの体より大きくて、完璧…"
+        },
+        {
+          "ind": "Kalian tidak akan mengerti betapa enaknya bersembunyi dalam hoodie...",
+          "jp": "あなたたちにはフーディーの中に隠れる気持ちよさがわからないでしょうね…"
+        },
+        {
+          "ind": "Kanae bisa tidur di mana saja dengan hoodie ini. Itulah kehebatan sejati...",
+          "jp": "このフーディーがあればどこでも眠れる。それが真の力よ…"
+        }
+      ]
+    },
+    {
+      "id": "topic_laziness",
+      "name": "Malas-malasan",
+      "expression": "bored",
+      "segments": [
+        {
+          "ind": "Kerja keras itu overrated. Kanae lebih suka strategi minimal effort...",
+          "jp": "努力しすぎるのは過大評価されてる。カナエは最小努力の戦略が好き…"
+        },
+        {
+          "ind": "Kenapa orang-orang sibuk sekali? Hidup ini terlalu singkat untuk kerja keras...",
+          "jp": "どうしてみんなそんなに忙しいの？一生懸命働くには人生は短すぎるわ…"
+        },
+        {
+          "ind": "Kanae sudah menyelesaikan semua tugas hari ini. Yaitu... tidak ada. Nn~",
+          "jp": "カナエは今日の仕事を全部終わらせた。つまり…何もない。んん～"
+        }
+      ]
+    },
+    {
+      "id": "topic_sarcasm",
+      "name": "Sarkasme",
+      "expression": "smug",
+      "segments": [
+        {
+          "ind": "Uwah... penonton baru datang. Kanae harus pura-pura senang? Yare yare...",
+          "jp": "うわ…新しい視聴者が来た。カナエは喜ぶふりをしなきゃ？やれやれ…"
+        },
+        {
+          "ind": "Kanae jenius, tapi kalian tidak akan mengerti. Terlalu kompleks untuk rakyat jelata...",
+          "jp": "カナエは天才だけど、あなたたちにはわからないでしょう。平民には複雑すぎるわ…"
+        },
+        {
+          "ind": "Sarkasme Kanae adalah hadiah. Kalian harusnya bersyukur...",
+          "jp": "カナエの皮肉は贈り物よ。感謝すべきなのに…"
+        }
+      ]
+    },
+    {
+      "id": "topic_apathy",
+      "name": "Apatis",
+      "expression": "bored",
+      "segments": [
+        {
+          "ind": "Dunia ini berputar tanpa Kanae peduli. Kanae hanya peduli pada bantal...",
+          "jp": "世界はカナエが気にしなくても回る。カナエは枕だけ気にかけてる…"
+        },
+        {
+          "ind": "Masalah kalian? Bukan urusan Kanae. Kanae punya masalah sendiri... mengantuk...",
+          "jp": "あなたたちの問題？カナエの知ったことじゃない。カナエは自分の問題がある…眠い…"
+        },
+        {
+          "ind": "Kanae mendengar tapi tidak mendengarkan. Itu skill penting...",
+          "jp": "カナエは聞いてるけど聞いてない。それも大事なスキルよ…"
+        }
+      ]
+    }
+  ]
+}

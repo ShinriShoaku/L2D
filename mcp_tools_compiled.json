@@ -1,0 +1,64 @@
+{
+  "bundle_hash": "01803a46a0101ff7",
+  "compiled_at": 1782626172.0100336,
+  "tools": {
+    "get_weather": {
+      "alias": "gw",
+      "short_desc": "Cek cuaca saat ini di kota tertentu. Kembalikan suhu, kondisi, dan kelembaban.",
+      "args_schema": [
+        {
+          "name": "city",
+          "example": "Nama kota",
+          "required": true
+        }
+      ],
+      "sim_result": "(simulasi: hasil dari get_weather)",
+      "trigger_phrases": [
+        "get weather",
+        "cuaca",
+        "suhu",
+        "iklim",
+        "weather"
+      ],
+      "pass_b_line": "- gw: Cek cuaca saat ini di kota tertentu. Kembalikan suhu, kondisi, dan kelembaban. | params: city=Nama kota",
+      "fallback": true,
+      "hash": "8242705ff0eb7713",
+      "name": "get_weather",
+      "category": "meta",
+      "enabled": true
+    },
+    "get_random_joke": {
+      "alias": "grj",
+      "short_desc": "Ambil joke/lelucon random dalam bahasa Inggris.",
+      "args_schema": [],
+      "sim_result": "(simulasi: hasil dari get_random_joke)",
+      "trigger_phrases": [
+        "get random joke",
+        "lelucon",
+        "joke",
+        "lucu"
+      ],
+      "pass_b_line": "- grj: Ambil joke/lelucon random dalam bahasa Inggris. | params: no params",
+      "fallback": true,
+      "hash": "ed25c1370cc1d0f4",
+      "name": "get_random_joke",
+      "category": "self",
+      "enabled": true
+    },
+    "get_dog_fact": {
+      "alias": "gdf",
+      "short_desc": "Ambil fakta menarik tentang anjing secara random.",
+      "args_schema": [],
+      "sim_result": "(simulasi: hasil dari get_dog_fact)",
+      "trigger_phrases": [
+        "get dog fact"
+      ],
+      "pass_b_line": "- gdf: Ambil fakta menarik tentang anjing secara random. | params: no params",
+      "fallback": true,
+      "hash": "9482aeb858f73f77",
+      "name": "get_dog_fact",
+      "category": "chat",
+      "enabled": true
+    }
+  }
+}

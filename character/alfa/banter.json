@@ -1,0 +1,242 @@
+[
+  {
+    "id": "b0001",
+    "segments": [
+      {"ind": "Anu... tadi aku lagi benerin transmisi yang agak susah. Ternyata ada satu gear yang aus~", "jp": "あの…さっきトランスミッション直してたんだけど、ギアが一つ摩耗してたの～"},
+      {"ind": "Awalnya kupikir masalahnya di timing belt, tapi ternyata bukan... hehe, aku salah tebak~", "jp": "最初はタイミングベルトの問題かと思ったら違って…えへへ、外れちゃった～"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b0002",
+    "segments": [
+      {"ind": "Umm... kalian pernah nggak, lagi kerja terus tiba-tiba alatnya hilang? Itu sering banget kejadian sama aku...", "jp": "うん…みんな作業中に急に道具なくなること、ない？私よくあるんだよね…"},
+      {"ind": "Padahal tadi ada di sini... eh ternyata ada di kantong sendiri. H-hehe, aku pelupa~", "jp": "さっきここにあったのに…あれ、ポケットにあった。へ、へへ、私忘れっぽくて～"}
+    ],
+    "expression": "shy"
+  },
+  {
+    "id": "b003",
+    "segments": [
+      {"ind": "Hmm~ sebenarnya aku agak deg-degan live kali ini... tapi senang ada kalian~", "jp": "うーん～実は今回のライブちょっとドキドキしてる…でもみんながいて嬉しい～"},
+      {"ind": "K-kalian baik banget mau nemenin aku ya... makasih banyak...", "jp": "み、みんな一緒にいてくれて優しいね…ありがとう…"}
+    ],
+    "expression": "blush"
+  },
+  {
+    "id": "b004",
+    "segments": [
+      {"ind": "Oh iya, kalian tahu nggak, cara paling mudah ngecek oli mesin itu gimana?", "jp": "あ、そうそう、みんなエンジンオイルの一番簡単なチェック方法知ってる？"},
+      {"ind": "Cukup lihat warnanya! Kalau masih kuning keemasan berarti bagus, kalau udah hitam pekat waktunya ganti~", "jp": "色を見るだけ！黄金色ならOK、真っ黒になったら交換時だよ～"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b005",
+    "segments": [
+      {"ind": "Tadi sebelum live aku makan onigiri... yang isi tuna mayonnaise, enak banget~", "jp": "ライブ前におにぎり食べたんだ…ツナマヨのやつ、おいしかった～"},
+      {"ind": "Kalian suka onigiri juga nggak? Kalau ada rekomendasi isian yang enak, kasih tau aku ya~", "jp": "みんなもおにぎり好き？おすすめの具があったら教えてね～"}
+    ],
+    "expression": "happy"
+  },
+  {
+    "id": "b006",
+    "segments": [
+      {"ind": "Anu... aku lagi mikirin mau belajar las listrik. Kayaknya berguna banget buat pekerjaan aku...", "jp": "あの…電気溶接勉強しようかなって考えてる。私の仕事にすごく役立ちそうで…"},
+      {"ind": "Tapi... katanya susah dan panas. Hm, mungkin aku harus coba dulu ya?", "jp": "でも…難しくて暑いって聞いた。うーん、まず試してみないといけないかな？"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b007",
+    "segments": [
+      {"ind": "K-kalian lagi ngapain sekarang? Lagi santai, atau lagi kerja sambil lihat live aku?", "jp": "み、みんな今何してる？ゆっくりしてる？それとも私のライブ見ながら仕事してる？"},
+      {"ind": "Aku senang kok kalau kalian bisa menemani aku kerja~ jadi nggak sepi~", "jp": "一緒に作業してくれるなら嬉しいよ～一人じゃないから�pi じゃなくなる～"}
+    ],
+    "expression": "shy"
+  },
+  {
+    "id": "b008",
+    "segments": [
+      {"ind": "Oh! Aku punya fakta mekanik nih. Umm... ban mobil sebaiknya diganti setiap 40.000 km atau 4 tahun~", "jp": "あ！メカニックの豆知識があるよ。うん…車のタイヤは40,000kmか4年ごとに交換した方がいいんだよ～"},
+      {"ind": "Meski kelihatan masih bagus dari luar, karena karet bisa mengeras dan retak dari dalam~", "jp": "外から見てきれいに見えても、ゴムが内側から硬化して亀裂が入ることがあるから～"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b009",
+    "segments": [
+      {"ind": "Hmm~ cuaca akhir-akhir ini panas ya... Bengkel aku jadi gerah banget kalau siang...", "jp": "うーん～最近暑い日続いてるね…お昼は工場がすごく蒸し暑くなって…"},
+      {"ind": "Biasanya aku pakai kipas angin besar tapi tetap aja keringetan... *hehe*", "jp": "大きな扇風機使ってるけどそれでも汗かいちゃって…*えへへ*"}
+    ],
+    "expression": "shy"
+  },
+  {
+    "id": "b010",
+    "segments": [
+      {"ind": "A-aku penasaran... kalian ada yang pernah benerin kendaraan sendiri nggak?", "jp": "わ、私気になるんだけど…みんな自分で車とか直したことある？"},
+      {"ind": "Aku sih senang bantu kalau ada yang butuh tips~ jangan malu-malu tanya ya~", "jp": "困ってたらアドバイスするの嬉しいよ～恥ずかしがらずに聞いてね～"}
+    ],
+    "expression": "happy"
+  },
+  {
+    "id": "b011",
+    "segments": [
+      {"ind": "Anu... kunci yang paling sering aku pakai itu kunci ring 14. Entah kenapa mesin motor banyak banget baut ukuran itu~", "jp": "あの…私が一番よく使うのは14mmのメガネレンチ。なぜかバイクのエンジンはそのサイズのボルトがすごく多いんだよね～"},
+      {"ind": "Makanya kalau mau beli kunci satu dulu, beli yang 14 aja~", "jp": "だから最初に一本だけ買うなら14mmがいいよ～"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b012",
+    "segments": [
+      {"ind": "Hmm~ aku kadang suka dengerin musik sambil kerja. Biasanya yang relaxing~", "jp": "うーん～作業しながら音楽聴くの好きなんだ。だいたいリラックスできる曲～"},
+      {"ind": "Kalian biasanya dengerin musik apa pas lagi kerja atau belajar? Aku mau coba rekomendasinya~", "jp": "みんなは仕事や勉強するとき何の音楽聴く？おすすめ試してみたい～"}
+    ],
+    "expression": "shy"
+  },
+  {
+    "id": "b013",
+    "segments": [
+      {"ind": "Oh iya! Kalian tahu nggak kenapa mesin kadang bunyi 'ketok-ketok' waktu digas?", "jp": "あ、そうそう！みんな、アクセル踏んだときエンジンが「カタカタ」鳴る理由知ってる？"},
+      {"ind": "Itu namanya engine knocking! Biasanya karena oktan bensin terlalu rendah atau timing pengapian yang kurang tepat~", "jp": "エンジンノッキングって言うんだよ！たいていガソリンのオクタン価が低いか、点火タイミングがずれてるせい～"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b014",
+    "segments": [
+      {"ind": "Umm... sebenarnya aku suka banget warna biru. Sayang nggak ada mesin warna biru yang cantik...", "jp": "うん…実は青色がすごく好きなんだ。でも綺麗な青いエンジンってないんだよね…"},
+      {"ind": "Mungkin suatu hari aku mau cat part mesin aku warna biru~ hehe, kayak konyol ya?", "jp": "いつかエンジンのパーツを青く塗りたいな～えへへ、変かな？"}
+    ],
+    "expression": "blush"
+  },
+  {
+    "id": "b015",
+    "segments": [
+      {"ind": "A-aku mau tanya sesuatu... kalian senang lihat live aku? Jujur aja nggak apa-apa~", "jp": "わ、私ちょっと聞いてもいい…みんな私のライブ楽しんでくれてる？正直に言っていいよ～"},
+      {"ind": "Aku... aku ingin terus improve supaya kalian betah di sini~", "jp": "私…もっと良くなりたいな、みんなに楽しんでもらえるように～"}
+    ],
+    "expression": "shy"
+  },
+  {
+    "id": "b016",
+    "segments": [
+      {"ind": "Ayo kita semangat lagi~ hari ini banyak banget orderan yang harus aku selesaikan!", "jp": "さあ、もっと頑張ろう～今日はやらなきゃいけない注文がたくさんあるんだ！"},
+      {"ind": "Tapi kalian lihatin aku kerja, jadi semangat terus~ oke, gas!", "jp": "でもみんなが見ててくれるから、やる気が続くよ～よし、行くぞ！"}
+    ],
+    "expression": "energetic"
+  },
+  {
+    "id": "b017",
+    "segments": [
+      {"ind": "Hmm... aku penasaran nih, kenapa ya kalau musim hujan, aki motor sering tekor?", "jp": "うーん…気になるんだけど、なんで梅雨の時期にバイクのバッテリーってあがりやすいんだろう？"},
+      {"ind": "Apa karena jarang dipakai? Atau karena dingin? Kalian tahu nggak?", "jp": "使わないから？それとも寒さのせい？みんな知ってる？"}
+    ],
+    "expression": "curious"
+  },
+  {
+    "id": "b018",
+    "segments": [
+      {"ind": "Padahal... sebenarnya aku pengennya sih hari ini bisa servis lebih banyak kendaraan...", "jp": "本当は…今日はもっとたくさんの車を整備したかったんだけど…"},
+      {"ind": "Tapi pelanggan pada cancel mulu... sedih deh... *hembusan napas*", "jp": "でもお客さんみんなキャンセルしちゃって…悲しいな… *はぁ*"}
+    ],
+    "expression": "sad"
+  },
+  {
+    "id": "b019",
+    "segments": [
+      {"ind": "Sekarang lagi ganti oli ini, santai aja... yang penting alirannya lancar...", "jp": "今オイル交換中、ゆったりやろう…大事なのはスムーズに流れること…"},
+      {"ind": "Suara gemericik oli ini bikin adem ya... kayak air terjun kecil gitu...", "jp": "このオイルのジャバジャバ音、落ち着くよね…小さな滝みたい…"}
+    ],
+    "expression": "calm"
+  },
+  {
+    "id": "b020",
+    "segments": [
+      {"ind": "Hihihi... kalian tuh sering banget nanya yang aneh-aneh ya~", "jp": "ひひひ…みんなって変な質問ばっかりするんだもんね～"},
+      {"ind": "Tapi aku suka kok~ jadi nggak bosen kerja di bengkel~", "jp": "でも好きだよ～工場の仕事が退屈しないもん～"}
+    ],
+    "expression": "teasing"
+  },
+  {
+    "id": "b021",
+    "segments": [
+      {"ind": "Maaf ya... tadi aku salah sebut istilah. Malu banget deh...", "jp": "ごめんね…さっき用語を間違えちゃった。すごく恥ずかしい…"},
+      {"ind": "Aku kadang masih belajar juga kok tentang part-part kendaraan... jangan dihina ya...", "jp": "私もまだ車のパーツについて勉強中なんだ…笑わないでね…"}
+    ],
+    "expression": "embarrassed"
+  },
+  {
+    "id": "b022",
+    "segments": [
+      {"ind": "Nah loh! Berhasil! Setelah 3 jam akhirnya mesin ini nyala lagi~", "jp": "おお！やった！3時間かかったけど、ようやくこのエンジンがまたかかった～"},
+      {"ind": "Ini nih kepuasan jadi mekanik. Nggak bisa diganti sama apapun~", "jp": "これこそ整備士のやりがい。何にも代えがたいね～"}
+    ],
+    "expression": "proud"
+  },
+  {
+    "id": "b023",
+    "segments": [
+      {"ind": "Huaaah~ maaf... aku kurang tidur tadi malam. Ngelas terus sampai jam 2...", "jp": "ふわぁ～ごめん…昨日寝不足で。2時まで作業してた…"},
+      {"ind": "Mata rasanya berat banget... tapi aku usahakan tetap fokus ya...", "jp": "目がすごく重い…でも集中するように頑張るね…"}
+    ],
+    "expression": "sleepy"
+  },
+  {
+    "id": "b024",
+    "segments": [
+      {"ind": "Wah, ini lucu banget! Kalian harus lihat bentuk baut ini~ unik banget kayak alien~", "jp": "わあ、これめっちゃ面白い！みんなこのボルトの形見て～すごくユニークでエイリアンみたい～"},
+      {"ind": "Aku simpen deh buat koleksi. Nggak setiap hari nemu yang beginian~", "jp": "コレクションしよ。こういうのは毎日見つかるもんじゃないからね～"}
+    ],
+    "expression": "excited"
+  },
+  {
+    "id": "b025",
+    "segments": [
+      {"ind": "Cih, pelanggan yang kemarin itu ternyata ngasih informasi salah...", "jp": "ちっ、この前のお客さん、間違った情報を教えてきたんだよね…"},
+      {"ind": "Jadi aku malah bongkar bagian yang nggak perlu... buang-buang waktu aja...", "jp": "だから必要のないところを分解しちゃったよ…時間の無駄だった…"}
+    ],
+    "expression": "grumbling"
+  },
+  {
+    "id": "b026",
+    "segments": [
+      {"ind": "*bisik* Sebenarnya... aku suka sama salah satu pelanggan yang sering ke bengkel...", "jp": "*ささやき* 実は…よく工場に来るお客さんの一人が好きなんだ…"},
+      {"ind": "Tapi jangan bilang siapa-siapa ya... ini rahasia kita aja...", "jp": "でも誰にも言わないでね…これだけの秘密だよ…"}
+    ],
+    "expression": "whispering"
+  },
+  {
+    "id": "b027",
+    "segments": [
+      {"ind": "Hore~ akhirnya hari ini bisa pulang cepat! Biasanya lembur terus~", "jp": "やった～今日はやっと早く帰れる！いつも残業ばかりなんだ～"},
+      {"ind": "Aku mau beli es krim dulu deh buat hadiah buat diri sendiri~", "jp": "自分へのご褒美にアイスクリーム買って帰ろ～"}
+    ],
+    "expression": "cheerful"
+  },
+  {
+    "id": "b028",
+    "segments": [
+      {"ind": "Anu... tolong jangan terlalu dekat dengan kamera, aku jadi grogi...", "jp": "あの…あんまりカメラに近づかないで、緊張しちゃうから…"},
+      {"ind": "H-hehe, maaf kalau tiba-tiba mukaku merah...", "jp": "へ、へへ、急に顔が赤くなったらごめんね…"}
+    ],
+    "expression": "blush"
+  },
+  {
+    "id": "b029",
+    "segments": [
+      {"ind": "Waduh! Ada yang ketinggalan! Kunci pas 12 mana? Udah aku cari-cari nggak ketemu...", "jp": "やばい！置き忘れた！12mmのスパナどこ？ずっと探してるのに見つからない…"},
+      {"ind": "Jangan-jangan... jatuh ke dalam mesin? Aduh repot ini...", "jp": "もしかして…エンジンの中に落ちた？ああ、これは面倒だ…"}
+    ],
+    "expression": "panicked"
+  },
+  {
+    "id": "b030",
+    "segments": [
+      {"ind": "Hm... lagu ini enak juga... kalian tahu judulnya? *sambil bergumam ikut irama*", "jp": "ん…この曲いいね…みんなタイトル知ってる？ *リズムに合わせてハミング*"},
+      {"ind": "Mungkin aku putar lagu ini sambil kerja biar makin semangat~", "jp": "この曲かけながら仕事したらもっとやる気出るかも～"}
+    ],
+    "expression": "murmuring"
+  }
+]

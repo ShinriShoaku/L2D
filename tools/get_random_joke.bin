@@ -1,0 +1,18 @@
+{
+  "alias": "grj",
+  "short_desc": "Ambil joke/lelucon random dalam bahasa Inggris.",
+  "args_schema": [],
+  "sim_result": "(simulasi: hasil dari get_random_joke)",
+  "trigger_phrases": [
+    "get random joke",
+    "lelucon",
+    "joke",
+    "lucu"
+  ],
+  "pass_b_line": "- grj: Ambil joke/lelucon random dalam bahasa Inggris. | params: no params",
+  "fallback": true,
+  "hash": "ed25c1370cc1d0f4",
+  "name": "get_random_joke",
+  "category": "self",
+  "enabled": true
+}

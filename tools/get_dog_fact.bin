@@ -1,0 +1,15 @@
+{
+  "alias": "gdf",
+  "short_desc": "Ambil fakta menarik tentang anjing secara random.",
+  "args_schema": [],
+  "sim_result": "(simulasi: hasil dari get_dog_fact)",
+  "trigger_phrases": [
+    "get dog fact"
+  ],
+  "pass_b_line": "- gdf: Ambil fakta menarik tentang anjing secara random. | params: no params",
+  "fallback": true,
+  "hash": "9482aeb858f73f77",
+  "name": "get_dog_fact",
+  "category": "chat",
+  "enabled": true
+}

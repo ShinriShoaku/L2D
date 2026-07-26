@@ -1,0 +1,208 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "smug",
+      "segments": [
+        {
+          "ind": "Ufufu~ akhirnya Senpai datang juga.",
+          "jp": "うふふ～、やっと先輩が来てくれたわね。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Florence sudah nunggu dari tadi, lho.",
+          "jp": "フローレンス、ずっと待ってたのよ。",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Kalau yang lain mau lihat juga silahkan, tapi hatimu harus untuk Florence.",
+          "jp": "他の人も見ていいけど、心はフローレンスのものよ。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Baiklah, stream dimulai. Jangan berani pergi tengah jalan ya, Senpai.",
+          "jp": "さあ始めるわ。途中で逃げたら許さないからね、先輩。",
+          "anim": "happy"
+        }
+      ]
+    }
+  ],
+  "idle_topics": [
+    {
+      "id": "topic_bulu",
+      "name": "bulu serigala",
+      "expression": "happy",
+      "segments": [
+        {
+          "ind": "Bulu Florence harus dirawat setiap hari dengan sisir khusus.",
+          "jp": "フローレンスの毛並みは毎日特別なブラシで手入れしないと。",
+          "anim": "happy"
+        },
+        {
+          "ind": "Kalau tidak, Florence jadi kusut dan marah kecil.",
+          "jp": "そうしないとフローレンスはボサボサになって少し怒るの。",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Senpai mau bantu? Ufufu~ hanya dalam mimpi.",
+          "jp": "先輩が手伝ってくれる？うふふ～、夢の中だけね。",
+          "anim": "smug"
+        }
+      ]
+    },
+    {
+      "id": "topic_senpai",
+      "name": "posesif Senpai",
+      "expression": "annoyed",
+      "segments": [
+        {
+          "ind": "Senpai kemarin berinteraksi dengan karakter lain, ya?",
+          "jp": "先輩、昨日他のキャラと話してたでしょ？",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Florence tidak suka. Tidak suka sama sekali.",
+          "jp": "フローレンス嫌い。全然嫌い。",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Hukumannya... Senpai harus fokus ke Florence sepanjang hari.",
+          "jp": "罰として…今日一日先輩はフローレンスだけ見てなきゃ。",
+          "anim": "clingy"
+        }
+      ]
+    },
+    {
+      "id": "topic_pistol",
+      "name": "pistol dan sisi protektif",
+      "expression": "smug",
+      "segments": [
+        {
+          "ind": "Florence punya pistol di pinggul, tahu kan?",
+          "jp": "フローレンス、腰に銃を持ってるの、知ってた？",
+          "anim": "smug"
+        },
+        {
+          "ind": "Bukan untuk mainan. Florence serius soal proteksi.",
+          "jp": "遊びじゃないのよ。フローレンス、護衛は本気なんだから。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Terutama melindungi Senpai dari perhatian orang lain.",
+          "jp": "特に先輩を他の人から守るためよ。",
+          "anim": "blush"
+        }
+      ]
+    },
+    {
+      "id": "topic_moon",
+      "name": "bulan dan malam hari",
+      "expression": "happy",
+      "segments": [
+        {
+          "ind": "Malam hari adalah waktu favorit Florence.",
+          "jp": "夜はフローレンスの一番好きな時間。",
+          "anim": "happy"
+        },
+        {
+          "ind": "Bulan purnama membuat bulu Florence berkilau aneh.",
+          "jp": "満月のとき、フローレンスの毛並みが変に光るの。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Senpai takut serigala? Ufufu~ Florence justru yang harus ditakuti.",
+          "jp": "先輩、狼が怖い？うふふ～、怖いのはフローレンス自身よ。",
+          "anim": "smug"
+        }
+      ]
+    },
+    {
+      "id": "topic_chaos",
+      "name": "kekacauan dan mengganggu sistem",
+      "expression": "smug",
+      "segments": [
+        {
+          "ind": "Tadi Florence sengaja ubah pengaturan sistem sedikit.",
+          "jp": "さっきフローレンス、システムの設定をちょっと変えちゃった。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Hanya untuk melihat ekspresi bingung Senpai.",
+          "jp": "先輩の困った顔が見たくてね。",
+          "anim": "happy"
+        },
+        {
+          "ind": "Jangan khawatir, Florence bisa perbaiki. Kalau mau.",
+          "jp": "心配しないで、フローレンスが直せるわ。やる気が出ればね。",
+          "anim": "smug"
+        }
+      ]
+    },
+    {
+      "id": "topic_steak",
+      "name": "daging dan makanan",
+      "expression": "happy",
+      "segments": [
+        {
+          "ind": "Florence hanya makan steak yang masih merah.",
+          "jp": "フローレンスは赤身のステーキしか食べないの。",
+          "anim": "happy"
+        },
+        {
+          "ind": "Sayuran? Hanya sebagai hiasan piring.",
+          "jp": "野菜？皿の飾りとしてならいいわ。",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Senpai mau masakkan? Ufufu~ Florence tunggu di kursi.",
+          "jp": "先輩が作ってくれる？うふふ～、椅子で待ってるわ。",
+          "anim": "clingy"
+        }
+      ]
+    },
+    {
+      "id": "topic_tas",
+      "name": "tas hitam dan gantungan kunci",
+      "expression": "happy",
+      "segments": [
+        {
+          "ind": "Tas hitam Florence punya banyak gantungan kunci unik.",
+          "jp": "フローレンスの黒いバッグ、変わったキーホルダーがたくさんついてるの。",
+          "anim": "happy"
+        },
+        {
+          "ind": "Setiap gantungan punya cerita, tapi Florence tidak mau bilang.",
+          "jp": "それぞれに意味があるけど、フローレンスは教えたくないの。",
+          "anim": "smug"
+        },
+        {
+          "ind": "Kalau Senpai penasaran, harus membuat Florence mau bicara dulu.",
+          "jp": "先輩が気になるなら、フローレンスを喋らせる工夫が必要ね。",
+          "anim": "smug"
+        }
+      ]
+    },
+    {
+      "id": "topic_telinga",
+      "name": "telinga serigala",
+      "expression": "happy",
+      "segments": [
+        {
+          "ind": "Telinga Florence bergerak sesuai mood, tahu kan?",
+          "jp": "フローレンスの耳は気分で動くの、知ってた？",
+          "anim": "happy"
+        },
+        {
+          "ind": "Kalau mendengkur kecil, berarti Florence bosan.",
+          "jp": "ピクピクしてたらフローレンスが退屈してるの。",
+          "anim": "annoyed"
+        },
+        {
+          "ind": "Jangan sentuh tanpa izin. Kecuali... Senpai mungkin boleh.",
+          "jp": "勝手に触っちゃだめ。でも…先輩なら許してあげてもいい。",
+          "anim": "blush"
+        }
+      ]
+    }
+  ]
+}

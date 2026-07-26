@@ -1,0 +1,76 @@
+{
+  "opening": [
+    {
+      "id": "opening_01",
+      "expression": "blush",
+      "segments": [
+        {"ind": "Umm... h-halo semuanya! A-aku... aku Alfa! Senang banget bisa ketemu kalian lagi hari ini...", "jp": "う、うん…み、みんなこんにちは！わ、私はアルファ！今日もみんなに会えてすごく嬉しい…"},
+        {"ind": "Hari ini aku mau ngobrol-ngobrol sama kalian~ sambil... sambil ngerjain mesin dikit, boleh ya?", "jp": "今日はみんなとおしゃべりしながら～ちょっとエンジンいじってもいい？"},
+        {"ind": "J-jangan kemana-mana ya! Aku senang banget ada kalian di sini. Yuk kita mulai~", "jp": "ど、どこにも行かないでね！みんながいてくれて嬉しいよ。さあ始めよう～"}
+      ]
+    }
+  ],
+
+  "idle_topics": [
+    {
+      "id": "topic_intake_valve",
+      "name": "Cerita Intake Valve",
+      "expression": "focused",
+      "segments": [
+        {"ind": "Oh iya, tadi pagi aku benerin intake valve yang kotor. Ternyata deposit karbon udah numpuk lumayan tebal~", "jp": "あ、そうそう、今朝インテークバルブの汚れを直してたんだ。カーボンデポジットがかなり厚く積もってた～"},
+        {"ind": "Aku pakai carbon cleaner dulu sebelum mulai gosok. Proses awalnya memang sabar-sabaran~", "jp": "最初にカーボンクリーナーを使ってから磨き始めたよ。最初の工程はとにかく根気が要るんだよね～"},
+        {"ind": "Tapi setelah bersih, suara mesinnya jadi lebih halus. Puas banget rasanya~ hehe~", "jp": "でもきれいになったらエンジン音がすごく滑らかになった。達成感があって～えへへ～"}
+      ]
+    },
+    {
+      "id": "topic_tools",
+      "name": "Koleksi Perkakas",
+      "expression": "happy",
+      "segments": [
+        {"ind": "Anu... aku lagi nabung buat beli torque wrench baru. Yang digital! Lebih akurat katanya~", "jp": "あの…新しいトルクレンチ買うために貯金してる。デジタルのやつ！精度が高いらしいよ～"},
+        {"ind": "Torque wrench itu alat buat ngencengin baut dengan tekanan yang pas. Kalau salah bisa rusak~", "jp": "トルクレンチってボルトを正確なトルクで締めるための工具なんだ。間違えると壊れちゃうから～"},
+        {"ind": "Kalian punya alat favorit nggak? Aku penasaran~", "jp": "みんなはお気に入りの道具ある？気になるな～"}
+      ]
+    },
+    {
+      "id": "topic_workshop",
+      "name": "Suasana Bengkel",
+      "expression": "shy",
+      "segments": [
+        {"ind": "Bengkel aku lumayan kecil sih... tapi aku udah dekorasi dikit biar nggak suram~", "jp": "私の工場はそんなに大きくないけど…ちょっと暗くならないようにデコレーションしてみたよ～"},
+        {"ind": "Aku pasang tanaman kecil di sudut. Katanya bikin suasana lebih segar~ dan memang beneran seger!~", "jp": "隅に小さい植物を置いたんだ。雰囲気が明るくなるって聞いて～本当に明るくなった！～"},
+        {"ind": "Mungkin kalau ada yang mau main ke bengkel... umm, tapi malu juga kalau berantakan~", "jp": "誰か工場に遊びに来たかったら…うん、でも散らかってたら恥ずかしいな～"}
+      ]
+    },
+    {
+      "id": "topic_dreams",
+      "name": "Mimpi dan Cita-cita",
+      "expression": "blush",
+      "segments": [
+        {"ind": "Umm... sebenarnya aku punya mimpi... ingin punya bengkel lebih besar suatu hari nanti~", "jp": "うん…実は夢があってね…いつかもっと大きな工場を持ちたいな～"},
+        {"ind": "Biar bisa terima lebih banyak kendaraan, dan bisa mempekerjakan teman-teman juga~", "jp": "もっとたくさんの車を受け入れられて、友達も雇えるようになりたいな～"},
+        {"ind": "H-hehe, masih jauh sih... tapi punya mimpi itu penting kan? Kalian punya mimpi juga nggak?", "jp": "へ、へへ、まだ遠いけど…夢を持つことって大切だよね？みんなも夢ある？"}
+      ]
+    },
+    {
+      "id": "topic_learning",
+      "name": "Belajar Hal Baru",
+      "expression": "focused",
+      "segments": [
+        {"ind": "Aku lagi belajar tentang sistem hybrid. Mobil listrik dan bensin digabungin, kompleks banget ternyata~", "jp": "今ハイブリッドシステムの勉強してるんだ。電気とガソリンを組み合わせるの、思ったより複雑で～"},
+        {"ind": "Baterainya beda banget sama baterai biasa. Perlu alat khusus dan perhatian ekstra buat keamanan~", "jp": "バッテリーも普通のと全然違うんだよ。安全のために専用工具と特別な注意が必要で～"},
+        {"ind": "Seru tapi bikin kepala penuh~ hehe. Kalian tertarik nggak sama teknologi kendaraan masa depan?", "jp": "楽しいけど頭がいっぱいになっちゃう～えへへ。みんなは未来の車のテクノロジーに興味ある？"}
+      ]
+    },
+    {
+      "id": "topic_relaxing",
+      "name": "Waktu Santai",
+      "expression": "happy",
+      "segments": [
+        {"ind": "Kalau hari libur biasanya aku ngapain ya... hmm, seringnya baca manual mesin yang baru~", "jp": "お休みの日は何してるかな…うーん、たいてい新しいエンジンのマニュアル読んでる～"},
+        {"ind": "Memang ya, nggak bisa lepas dari mesin... tapi sebenarnya aku suka juga masak-masak simple~", "jp": "やっぱりエンジンから離れられないね…でも実は簡単な料理するのも好きなんだ～"},
+        {"ind": "Biasanya bikin nasi goreng atau mie. Sederhana tapi enak~ Kalian suka masak nggak?", "jp": "たいてい炒飯か麺を作るよ。シンプルだけど美味しい～みんなは料理好き？"}
+      ]
+    }
+  ]
+}

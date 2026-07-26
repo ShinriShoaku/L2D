@@ -1,0 +1,43 @@
+{
+  "user_id": "andyka362",
+  "username": "Uncle Andy",
+  "info_user": [],
+  "romance_status": "",
+  "romance_points": 0,
+  "note": [],
+  "gift_history": [
+    {
+      "gift": "Heart Me",
+      "count": 1,
+      "ts": "2026-05-14T17:07:07.425301+00:00"
+    },
+    {
+      "gift": "Popular Vote",
+      "count": 1,
+      "ts": "2026-05-14T17:07:09.944862+00:00"
+    },
+    {
+      "gift": "Heart Me",
+      "count": 1,
+      "ts": "2026-05-18T12:44:24.138676+00:00"
+    },
+    {
+      "gift": "Popular Vote",
+      "count": 1,
+      "ts": "2026-05-18T12:44:26.556721+00:00"
+    },
+    {
+      "gift": "Heart Me",
+      "count": 1,
+      "ts": "2026-05-19T12:36:33.675790+00:00"
+    },
+    {
+      "gift": "Popular Vote",
+      "count": 1,
+      "ts": "2026-05-19T12:36:35.329633+00:00"
+    }
+  ],
+  "vip_user": false,
+  "last_chat_timestamp": "Selasa, 19 Mei 2026, 01:33 PM",
+  "_last_chat_iso": "2026-05-19T13:33:04.286009+00:00"
+}

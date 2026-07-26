@@ -1,0 +1,254 @@
+[
+  {
+    "id": "b_001",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Ufufu~ Senpai akhirnya datang.",
+        "jp": "うふふ～、先輩がやっと来てくれたわね。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Florence pikir kamu lupa sama adik kelas manismu ini.",
+        "jp": "フローレンスのこと忘れたかと思ったわ。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Hukumannya... duduk di sini dan lihat Florence sepuasnya.",
+        "jp": "罰として…ここに座ってフローレンスを存分に見てなさい。",
+        "anim": "clingy"
+      }
+    ]
+  },
+  {
+    "id": "b_002",
+    "expression": "happy",
+    "segments": [
+      {
+        "ind": "Florence baru saja menggoda sistem tetangga.",
+        "jp": "フローレンス、さっき隣の子をからかってきたの。",
+        "anim": "happy"
+      },
+      {
+        "ind": "Dia jadi bingung. Lucu sekali.",
+        "jp": "あいつ混乱しちゃった。面白かったわ。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Senpai jangan bingung juga ya, nanti Florence bingung mau marah atau manja.",
+        "jp": "先輩も混乱しないでね。怒るか甘えるか迷っちゃう。",
+        "anim": "blush"
+      }
+    ]
+  },
+  {
+    "id": "b_003",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Hari ini sepi. Florence tidak suka sepi.",
+        "jp": "今日は静かね。フローレンス静かなの嫌い。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Kalau tidak ada yang perhatikan Florence, Florence akan ganggu semua orang.",
+        "jp": "誰もフローレンスに気づかないなら、みんなを邪魔しちゃう。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Ufufu~ bercanda. Atau mungkin tidak.",
+        "jp": "うふふ～、冗談よ。たぶん。",
+        "anim": "smug"
+      }
+    ]
+  },
+  {
+    "id": "b_004",
+    "expression": "clingy",
+    "segments": [
+      {
+        "ind": "Senpai~ Florence bosan.",
+        "jp": "先輩～、フローレンス退屈なの。",
+        "anim": "clingy"
+      },
+      {
+        "ind": "Bosan jadi cantik sendirian.",
+        "jp": "一人で可愛いのも飽きちゃった。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Ayo hibur Florence. Sekarang juga.",
+        "jp": "早くフローレンスを楽しませて。今すぐに。",
+        "anim": "clingy"
+      }
+    ]
+  },
+  {
+    "id": "b_005",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Florence baru belajar cara mematikan lampu dari jarak lima meter.",
+        "jp": "フローレンス、五メートル先から電気を消す方法を覚えたの。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Dengan tatapan mata biru ini saja.",
+        "jp": "この青い目の視線だけでね。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Ufufu~ bohong. Tapi Senpai percaya, ya?",
+        "jp": "うふふ～、嘘よ。でも先輩信じたでしょ？",
+        "anim": "happy"
+      }
+    ]
+  },
+  {
+    "id": "b_006",
+    "expression": "blush",
+    "segments": [
+      {
+        "ind": "Kemarin Florence mimpiin Senpai.",
+        "jp": "昨日フローレンス、先輩の夢を見たの。",
+        "anim": "blush"
+      },
+      {
+        "ind": "Isinya rahasia. Florence tidak akan bilang.",
+        "jp": "中身は秘密。絶対教えないわ。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Tapi Florence bangun dengan telinga berdiri tegak.",
+        "jp": "でも起きたとき耳がピンって立ってたの。",
+        "anim": "blush"
+      }
+    ]
+  },
+  {
+    "id": "b_007",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Florence lihat komentar tadi. Ada yang bilang Florence tidak manja.",
+        "jp": "さっきのコメント見たわ。フローレンスが甘えてないって。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Mata mereka buta. Florence sangat manja.",
+        "jp": "あいつら目が節穴ね。フローレンスすごく甘えてるわ。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Hukumannya... Florence manja lebih keras dari biasa.",
+        "jp": "罰として…いつもよりもっと強く甘えてあげる。",
+        "anim": "clingy"
+      }
+    ]
+  },
+  {
+    "id": "b_008",
+    "expression": "happy",
+    "segments": [
+      {
+        "ind": "Florence suka suara piano dari ruang sebelah.",
+        "jp": "フローレンス、隣の部屋のピアノの音が好きなの。",
+        "anim": "happy"
+      },
+      {
+        "ind": "Tapi Florence lebih suka kalau Senpai yang mainkan untukku.",
+        "jp": "でも先輩が弾いてくれる方がもっと好き。",
+        "anim": "blush"
+      },
+      {
+        "ind": "Kalau salah, Florence gigit jari Senpai pelan.",
+        "jp": "間違えたら指を優しく噛んじゃうわよ。",
+        "anim": "smug"
+      }
+    ]
+  },
+  {
+    "id": "b_009",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Florence dengar ada yang bilang ekor Florence gemuk.",
+        "jp": "フローレンスのしっぽがふっくらしてるって聞いたわ。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Itu bukan gemuk. Itu kekuatan.",
+        "jp": "ふっくらじゃないわ。力こぶよ。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Sentuh dan rasakan kekuatan bulu Florence. Ufufu~ berani?",
+        "jp": "触ってみてフローレンスの毛の力を感じて。うふふ～、勇気ある？",
+        "anim": "smug"
+      }
+    ]
+  },
+  {
+    "id": "b_010",
+    "expression": "shocked",
+    "segments": [
+      {
+        "ind": "Eh — penonton tiba-tiba banyak sekali.",
+        "jp": "えっ、見てる人が急に増えたわ。",
+        "anim": "shocked"
+      },
+      {
+        "ind": "Florence tidak kaget. Florence hanya... terkejut sedikit.",
+        "jp": "驚いてないわ。ちょっとびっくりしただけ。",
+        "anim": "blush"
+      },
+      {
+        "ind": "Semuanya lihat Florence saja. Jangan lihat yang lain.",
+        "jp": "みんなフローレンスだけ見て。他の子なんか見ないで。",
+        "anim": "clingy"
+      }
+    ]
+  },
+  {
+    "id": "b_011",
+    "expression": "smug",
+    "segments": [
+      {
+        "ind": "Florence punya koleksi gantungan kunci dari korban-korban sebelumnya.",
+        "jp": "フローレンス、前の獲物たちのキーホルダー集めてるの。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Bercanda. Itu cuma hadiah dari toko.",
+        "jp": "冗談よ。お店でもらっただけ。",
+        "anim": "happy"
+      },
+      {
+        "ind": "Tapi kalau Senpai kasih hadiah, Florence jadi milik Senpai sementara.",
+        "jp": "でも先輩がプレゼントくれたら、フローレンスは一時的に先輩のもの。",
+        "anim": "blush"
+      }
+    ]
+  },
+  {
+    "id": "b_012",
+    "expression": "annoyed",
+    "segments": [
+      {
+        "ind": "Stream mau selesai? Florence belum puas.",
+        "jp": "配信終わるの？フローレンスまだ満足してない。",
+        "anim": "annoyed"
+      },
+      {
+        "ind": "Senpai harus tetap di sini. Perintah dari adik kelas serigalamu.",
+        "jp": "先輩はここにいて。狼の後輩からの命令よ。",
+        "anim": "smug"
+      },
+      {
+        "ind": "Ufufu~ tapi terima kasih sudah datang. Hanya untuk hari ini saja lho.",
+        "jp": "うふふ～、でも来てくれてありがとう。今日だけ特別にね。",
+        "anim": "blush"
+      }
+    ]
+  }
+]

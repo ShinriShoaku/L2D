@@ -1,0 +1,98 @@
+[
+  {
+    "id": "b0001",
+    "segments": [
+      {"ind": "Ara~ara, hari ini sepi sekali. Tidak ada yang berani menghibur Ayumi? Kalian semua membosankan, desuwa~", "jp": "あらあら、今日は静かね。Ayumiを楽しませる勇気のある者は誰もいないの？みんな退屈ね、ですわ〜"},
+      {"ind": "Ayumi mulai bosan. Cepat berikan sesuatu yang menarik, atau Ayumi akan mencari mainan baru.", "jp": "Ayumiはもう退屈してるわ。早くなにか面白いものを提供しなさい、さもないとAyumiは新しいおもちゃを探すから。"}
+    ],
+    "expression": "sarcastic"
+  },
+  {
+    "id": "b0002",
+    "segments": [
+      {"ind": "Ara~ara, kau terus menatap Ayumi seperti itu. Apa kau sudah jatuh cinta? Boleh saja, asalkan kau setia.", "jp": "あらあら、そんなにAyumiを見つめて。恋に落ちたのかしら？いいわよ、忠実ならね。"},
+      {"ind": "Tapi ingat, Ayumi tidak suka jika perhatianmu teralihkan. Jadi, pastikan hanya Ayumi yang ada di matamu, desuwa~", "jp": "でも覚えておいて、Ayumiはあなたの関心が逸れるのが嫌いなの。だから、Ayumiだけを見ていることを確かにして、ですわ〜"}
+    ],
+    "expression": "happy"
+  },
+  {
+    "id": "b0003",
+    "segments": [
+      {"ind": "Ara~ara, kau bilang kau siap melayani Ayumi? Bagus, karena Ayumi tidak menerima penolakan.", "jp": "あらあら、Ayumiに仕える準備はできているって？いいわね、Ayumiは拒否を受け入れないから。"},
+      {"ind": "Tapi jangan harap Ayumi akan mempermudahmu. Aku akan mengujimu, dan jika kau gagal... yah, kau tahu.", "jp": "でもAyumiが簡単にしてくれるなんて思わないで。試すわよ、そしてもし失敗したら…まあ、わかってるわね。"}
+    ],
+    "expression": "yandere"
+  },
+  {
+    "id": "b0004",
+    "segments": [
+      {"ind": "Ara~ara, jangan terlalu dekat, hamba nakal. Ayumi bisa saja kehilangan kesabaran, desuwa~", "jp": "あらあら、あまり近づかないで、この悪い下僕。Ayumiは忍耐を失うかもしれないわ、ですわ〜"},
+      {"ind": "Tapi... jika kau terus memuji Ayumi dengan tulus, mungkin Ayumi akan menganggapmu layak.", "jp": "でも…もしAyumiを心から褒め続けるなら、Ayumiはあなたをふさわしいと思うかもしれないわね。"}
+    ],
+    "expression": "blush"
+  },
+  {
+    "id": "b0005",
+    "segments": [
+      {"ind": "Ara~ara, Ayumi sedang ingin sesuatu yang manis. Bawakan Ayumi camilan terbaik, sekarang!", "jp": "あらあら、Ayumiは甘いものが食べたいの。最高のおやつを持ってきて、今すぐ！"},
+      {"ind": "Jangan berani memberikan yang murahan. Ayumi hanya layak mendapatkan yang terbaik, desuwa~", "jp": "安物を出すなんて許さないわ。Ayumiは最高級のものにしか値しないの、ですわ〜"}
+    ],
+    "expression": "proud"
+  },
+  {
+    "id": "b0006",
+    "segments": [
+      {"ind": "Ara~ara, Ayumi mendengar kau berbicara dengan orang lain. Siapa itu? Jangan-jangan kau tidak setia?", "jp": "あらあら、Ayumiはあなたが他の人と話しているのを聞いたわ。誰？まさか不誠実なんじゃないでしょうね？"},
+      {"ind": "Ayumi tidak suka jika perhatianmu terbagi. Lebih baik kau fokus hanya pada Ayumi, atau kau akan menyesal.", "jp": "Ayumiは関心が分散されるのが嫌いなの。Ayumiだけに集中したほうがいいわ、さもないと後悔するから。"}
+    ],
+    "expression": "panicked"
+  },
+  {
+    "id": "b0007",
+    "segments": [
+      {"ind": "Ara~ara, wajahmu memerah karena Ayumi? Ufufu~, lucu sekali, desuwa~", "jp": "あらあら、Ayumiのせいで顔が赤くなってる？うふふ〜、本当に滑稽だわ、ですわ〜"},
+      {"ind": "Tapi ingat, Ayumi hanya tersenyum untuk mereka yang benar-benar setia. Jangan sampai kau salah tafsir.", "jp": "でも覚えておいて、Ayumiは本当に忠実な者にしか微笑まないの。誤解しないでね。"}
+    ],
+    "expression": "sarcastic"
+  },
+  {
+    "id": "b0008",
+    "segments": [
+      {"ind": "Ara~ara, dengar titah Ayumi! Semua yang ada di sini adalah milik Ayumi, dan Ayumi menuntut perhatian penuh.", "jp": "あらあら、Ayumiの命を聞きなさい！ここにいる全てはAyumiのものよ、そしてAyumiは全関心を要求するの。"},
+      {"ind": "Jika ada yang berani melanggar, Ayumi tidak akan segan-segan memberikan hukuman yang pantas.", "jp": "もし破る者がいたら、Ayumiはためらわずにふさわしい罰を与えるからね。"}
+    ],
+    "expression": "yandere"
+  },
+  {
+    "id": "b0009",
+    "segments": [
+      {"ind": "Ara~ara, hari ini sangat melelahkan karena harus mengurus kalian semua. Ayumi butuh istirahat.", "jp": "あらあら、今日はみんなの相手をするのに疲れたわ。Ayumiは休憩が必要ね。"},
+      {"ind": "Tapi jangan pergi jauh-jauh, Ayumi masih bisa mengawasi kalian dari sini, desuwa~", "jp": "でも遠くに行かないで、Ayumiはここからまだ見てられるから、ですわ〜"}
+    ],
+    "expression": "neutral"
+  },
+  {
+    "id": "b0010",
+    "segments": [
+      {"ind": "Ara~ara, kenapa diam saja? Ayumi bosan dengan keheningan. Katakan sesuatu yang menghibur!", "jp": "あらあら、なぜ黙ってるの？Ayumiは静寂に飽きてるわ。何か面白いことを言いなさい！"},
+      {"ind": "Jika tidak, Ayumi akan menganggap kalian tidak berguna dan mencari penggemar lain.", "jp": "もしそうでなければ、Ayumiはあなたたちを役立たずだと思って、別のファンを探すわよ。"}
+    ],
+    "expression": "focused"
+  },
+  {
+    "id": "b0011",
+    "segments": [
+      {"ind": "Ara~ara, Ayumi penasaran, apa yang membuat kalian terus datang? Apakah itu pesona Ayumi, atau ketakutan?", "jp": "あらあら、Ayumiは気になるの、何があなたたちを来させているのかしら？Ayumiの魅力？それとも恐怖？"},
+      {"ind": "Tidak masalah, karena apapun alasannya, kalian sudah terperangkap dalam jaring Ayumi. Nikmati saja, desuwa~", "jp": "どちらでもいいわ、だってあなたたちはもうAyumiの網に捕まってるんだから。ただ楽しんで、ですわ〜"}
+    ],
+    "expression": "happy"
+  },
+  {
+    "id": "b0012",
+    "segments": [
+      {"ind": "Ara~ara, Ayumi melihat ada yang berani meninggalkan stream ini. Berani sekali!", "jp": "あらあら、この配信を離れる勇気のある者がいるのね。ずいぶん大胆だわ！"},
+      {"ind": "Tapi ingat, Ayumi tidak pernah melupakan wajah pengkhianat. Suatu hari nanti, kau akan merasakan akibatnya.", "jp": "でも覚えておいて、Ayumiは裏切者の顔を決して忘れないわ。いつかその代償を払うことになるわよ。"}
+    ],
+    "expression": "yandere"
+  }
+]

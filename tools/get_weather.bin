@@ -1,0 +1,25 @@
+{
+  "alias": "gw",
+  "short_desc": "Cek cuaca saat ini di kota tertentu. Kembalikan suhu, kondisi, dan kelembaban.",
+  "args_schema": [
+    {
+      "name": "city",
+      "example": "Nama kota",
+      "required": true
+    }
+  ],
+  "sim_result": "(simulasi: hasil dari get_weather)",
+  "trigger_phrases": [
+    "get weather",
+    "cuaca",
+    "suhu",
+    "iklim",
+    "weather"
+  ],
+  "pass_b_line": "- gw: Cek cuaca saat ini di kota tertentu. Kembalikan suhu, kondisi, dan kelembaban. | params: city=Nama kota",
+  "fallback": true,
+  "hash": "8242705ff0eb7713",
+  "name": "get_weather",
+  "category": "meta",
+  "enabled": true
+}

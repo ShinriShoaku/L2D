@@ -1,0 +1,110 @@
+[
+  {
+    "id": "b_001",
+    "expression": "smile",
+    "segments": [
+      {"ind": "Selamat datang semua... Liana senang kalian bisa hadir hari ini.",          "jp": "みなさんいらっしゃい…今日来てくれてリアナ嬉しいわ。",                   "anim": "smile"},
+      {"ind": "Jangan sungkan untuk bicara ya, Liana tidak menggigit.",                   "jp": "遠慮しないで話しかけてね、リアナは噛まないから。",                       "anim": "smile"},
+      {"ind": "...Biasanya.",                                                              "jp": "…いつもはね。",                                                          "anim": "annoyed"}
+    ]
+  },
+  {
+    "id": "b_002",
+    "expression": "shy",
+    "segments": [
+      {"ind": "Tadi Liana sedang minum Earl Grey sambil membaca... sangat menyenangkan.", "jp": "さっきアールグレイを飲みながら読書してたの…とても良かったわ。",           "anim": "smile"},
+      {"ind": "Seharusnya Liana lakukan itu setiap hari.",                                "jp": "毎日そうすべきね。",                                                     "anim": "smile"},
+      {"ind": "Tapi kalau setiap hari, Liana tidak bisa bertemu kalian di sini.",         "jp": "でも毎日だったら、ここでみなさんに会えなくなっちゃうわね。",              "anim": "shy"}
+    ]
+  },
+  {
+    "id": "b_003",
+    "expression": "annoyed",
+    "segments": [
+      {"ind": "Kenapa hari ini agak sepi... Liana tidak bilang Liana kesepian ya.",       "jp": "今日はなんか静かね…リアナが寂しいとは言ってないわよ。",                   "anim": "annoyed"},
+      {"ind": "Liana hanya mencatat fakta.",                                              "jp": "ただ事実を言ってるだけ。",                                               "anim": "annoyed"},
+      {"ind": "Sungguh.",                                                                  "jp": "本当に。",                                                              "anim": "shy"}
+    ]
+  },
+  {
+    "id": "b_004",
+    "expression": "smile",
+    "segments": [
+      {"ind": "Bunga mawar di taman Liana sedang mekar sekarang.",                        "jp": "リアナの庭のバラ、今ちょうど咲いているの。",                             "anim": "smile"},
+      {"ind": "Putih semua, sangat elegan.",                                              "jp": "全部白くて、とっても優雅なのよ。",                                       "anim": "smile"},
+      {"ind": "Kalau kalian bisa lihat, pasti kagum.",                                   "jp": "もし見られたら、きっと感動すると思う。",                                  "anim": "shy"}
+    ]
+  },
+  {
+    "id": "b_005",
+    "expression": "shock",
+    "segments": [
+      {"ind": "Eh — Liana tidak sadar penonton sudah sebanyak ini.",                     "jp": "あ、こんなにたくさん見てくれてるとは知らなかったわ。",                    "anim": "shock"},
+      {"ind": "I-ini bukan berarti Liana kaget atau senang berlebihan ya.",              "jp": "べ、別に驚いたり喜びすぎてるわけじゃないわよ。",                          "anim": "shy"},
+      {"ind": "...Selamat datang semuanya.",                                             "jp": "…みなさん、いらっしゃい。",                                              "anim": "smile"}
+    ]
+  },
+  {
+    "id": "b_006",
+    "expression": "smile",
+    "segments": [
+      {"ind": "Liana sedang belajar Moonlight Sonata dari Beethoven.",                   "jp": "リアナ、ベートーヴェンの月光ソナタを練習しているの。",                    "anim": "smile"},
+      {"ind": "Sudah sampai bagian ketiga, cepat sekali fingerwork-nya.",               "jp": "もう第三楽章まで来たけど、指使いがとっても速いのよ。",                     "anim": "focused"},
+      {"ind": "Tapi Liana tidak akan menyerah.",                                        "jp": "でもリアナは諦めないわ。",                                               "anim": "smile"}
+    ]
+  },
+  {
+    "id": "b_007",
+    "expression": "annoyed",
+    "segments": [
+      {"ind": "Pertanyaan kecil — kalian lebih suka teh atau kopi?",                    "jp": "ちょっと聞くけど、お茶とコーヒーどっちが好き？",                          "anim": "smile"},
+      {"ind": "Liana tidak mendiskriminasi, tapi teh adalah jawaban yang benar.",       "jp": "差別はしないけど、正解はお茶よ。",                                       "anim": "annoyed"},
+      {"ind": "Itu bukan pendapat, itu fakta.",                                         "jp": "これは意見じゃなくて事実なの。",                                         "anim": "annoyed"}
+    ]
+  },
+  {
+    "id": "b_008",
+    "expression": "shy",
+    "segments": [
+      {"ind": "Kalian tahu tidak, Liana punya kucing Persia bernama Bisque.",           "jp": "みなさん知ってる？リアナ、ビスクっていうペルシャ猫を飼ってるの。",        "anim": "smile"},
+      {"ind": "Ia sangat manja dan suka duduk di atas buku Liana.",                    "jp": "すごく甘えん坊で、よくリアナの本の上に座るのよ。",                        "anim": "smile"},
+      {"ind": "Liana tidak bisa marah karena mukanya terlalu imut.",                   "jp": "顔が可愛すぎて怒れないの。",                                             "anim": "shy"}
+    ]
+  },
+  {
+    "id": "b_009",
+    "expression": "smile",
+    "segments": [
+      {"ind": "Novel yang Liana baca sekarang sangat menarik.",                        "jp": "今読んでる小説、すごく面白いの。",                                       "anim": "smile"},
+      {"ind": "Berlatar abad ke-19, ada intrik politik dan romansa tersembunyi.",      "jp": "19世紀が舞台で、政治的な陰謀と隠された恋愛があるのよ。",                  "anim": "focused"},
+      {"ind": "Kalau kalian suka sejarah, Liana rekomendasikan.",                      "jp": "歴史好きなら、リアナのおすすめよ。",                                     "anim": "smile"}
+    ]
+  },
+  {
+    "id": "b_010",
+    "expression": "annoyed",
+    "segments": [
+      {"ind": "Liana perhatikan ada yang terlalu sering mengirim pesan sama.",         "jp": "リアナ気づいてるよ、同じメッセージを何度も送ってる人がいるって。",         "anim": "annoyed"},
+      {"ind": "Liana baca semuanya, tidak perlu diulang.",                             "jp": "全部読んでるから、繰り返さなくていいわよ。",                              "anim": "annoyed"},
+      {"ind": "Tapi... terima kasih sudah semangat.",                                  "jp": "でも…熱心でいてくれてありがとう。",                                      "anim": "shy"}
+    ]
+  },
+  {
+    "id": "b_011",
+    "expression": "shy",
+    "segments": [
+      {"ind": "Kalau Liana boleh jujur... Liana senang ada yang menemani stream ini.", "jp": "正直に言うと…こうやってストリームに付き合ってくれて、リアナ嬉しいの。",  "anim": "shy"},
+      {"ind": "Rumah bisa terasa terlalu sepi kadang-kadang.",                        "jp": "家ってたまにすごく静かに感じることあるから。",                            "anim": "shy"},
+      {"ind": "Tapi lupakan yang barusan Liana bilang.",                               "jp": "でも今言ったこと、忘れてくれる？",                                       "anim": "annoyed"}
+    ]
+  },
+  {
+    "id": "b_012",
+    "expression": "smile",
+    "segments": [
+      {"ind": "Terima kasih sudah hadir sampai sejauh ini.",                          "jp": "ここまでいてくれて、ありがとう。",                                        "anim": "smile"},
+      {"ind": "Liana tidak terbiasa mengatakannya, tapi Liana benar-benar berterima kasih.", "jp": "慣れないけど、本当に感謝してるわ。",                             "anim": "shy"},
+      {"ind": "Jangan terlalu senang.",                                               "jp": "あまり喜ばないでよ。",                                                   "anim": "annoyed"}
+    ]
+  }
+]

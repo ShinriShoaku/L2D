@@ -1,0 +1,28 @@
+{
+  "user_id": "lucienastra_",
+  "username": "Marceval The Final Calculation",
+  "info_user": [],
+  "romance_status": "",
+  "romance_points": 0,
+  "note": [],
+  "gift_history": [
+    {
+      "gift": "Heart Me",
+      "count": 1,
+      "ts": "2026-05-21T14:27:21.464590+00:00"
+    },
+    {
+      "gift": "Rose",
+      "count": 1,
+      "ts": "2026-05-21T14:28:44.837936+00:00"
+    },
+    {
+      "gift": "Blow a kiss",
+      "count": 1,
+      "ts": "2026-05-21T14:29:54.497336+00:00"
+    }
+  ],
+  "vip_user": false,
+  "last_chat_timestamp": "Kamis, 21 Mei 2026, 02:30 PM",
+  "_last_chat_iso": "2026-05-21T14:30:56.777555+00:00"
+}
