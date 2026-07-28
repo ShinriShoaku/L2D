@@ -60,6 +60,7 @@ _soul_client = OpenAI(base_url=SOUL_API_URL, api_key="local", timeout=60, max_re
 # ─── Active character ─────────────────────────────────────────────────────────
 CHARACTER:         Dict = {}
 _ACTIVE_CHAR_NAME: str  = "default"
+_ACTIVE_CHAR_DIR:  Optional[str] = None   # PATCH: folder karakter aktif (characters/<nama>/)
 _model_mem:        Optional[ModelMemory]       = None
 _chat_hist:        Optional[ChatHistory]       = None
 _user_mgr:         Optional[UserMemoryManager] = None
@@ -109,12 +110,20 @@ def _get_trans_examples() -> List[Dict]:
 # CHARACTER SETUP
 # ═══════════════════════════════════════════════════════════════════════════════
 
-def set_character(name: str, data: Dict, storage_dir: str = None):
-    global CHARACTER, _ACTIVE_CHAR_NAME, _model_mem, _chat_hist, \
+def set_character(name: str, data: Dict, storage_dir: str = None, char_dir: str = None):
+    """
+    char_dir: folder karakter (mis. characters/liana/), biasanya dari
+    CharacterManager.char_dir. PATCH: disimpan ke _ACTIVE_CHAR_DIR supaya
+    context_composer.compose() bisa meneruskannya ke character_memory.load()
+    dan membaca file bin yang BENAR (per-karakter), bukan fallback global
+    state/character_memory.bin yang selalu kosong.
+    """
+    global CHARACTER, _ACTIVE_CHAR_NAME, _ACTIVE_CHAR_DIR, _model_mem, _chat_hist, \
            _last_assistant_response, ADMIN_USER_ID
     dir_ = storage_dir or MODEL_MEMORY_DIR
     CHARACTER                = data
     _ACTIVE_CHAR_NAME        = name
+    _ACTIVE_CHAR_DIR         = char_dir
     _model_mem               = ModelMemory(name, storage_dir=dir_)
     _chat_hist               = ChatHistory(name, storage_dir=dir_)
     _last_assistant_response = ""
@@ -126,7 +135,7 @@ def set_character(name: str, data: Dict, storage_dir: str = None):
                    if k not in data.get("prompts", {})]
         if missing:
             print(f"[MAIN] ⚠️ Prompt tidak lengkap di character.json: {missing}")
-        print(f"[MAIN] Character={name} | admin={ADMIN_USER_ID} | model_mem={_model_mem.filepath}")
+        print(f"[MAIN] Character={name} | admin={ADMIN_USER_ID} | model_mem={_model_mem.filepath} | char_dir={char_dir or '(none — character_self akan kosong!)'}")
 
 
 def get_user_manager() -> UserMemoryManager:
@@ -1333,7 +1342,7 @@ def build_soul_ctx_v3(
         _mc_clean = memory_context.strip()
         _has_real_memory = any(
             section in _mc_clean
-            for section in ("[Working Memory]", "[Profil User]", "[knowledge/", "[riwayat sesi", "[pengalaman")
+            for section in ("[Working Memory]", "[Profil User]", "[knowledge/", "[riwayat sesi", "[pengalaman","[Profil Diri Karakter]")
         )
         if _has_real_memory:
             lines.append("[Memory Context]")
@@ -2281,7 +2290,8 @@ def full_generate(
         try:
             char_id    = CHARACTER.get("id") or char_name or "default"
             _cx_ctx    = _cx_compose(user_mem.user_id, char_id, _conv_state,
-                                     tool_output="")
+                                     tool_output="", char_dir=_ACTIVE_CHAR_DIR,
+                                     llm_call=_llm_call, user_input=user_input)
             _soul_mode = _cx_ctx["mode"]
             _dbg.line(f"  [CTX COMPOSER] {_cx_summary_line(_cx_ctx)}")
         except Exception as e:
@@ -2402,6 +2412,7 @@ def full_generate(
                 messages    = full_hist[-10:],
                 llm_call    = _llm_call,
                 tool_output = raw_tool_data,
+                char_dir    = _ACTIVE_CHAR_DIR,
                 async_mode  = True,   # daemon thread, tidak block
             )
         except Exception as e:
@@ -2657,7 +2668,7 @@ def main():
 
     name = input(f"Character [{chars[0]}]: ").strip() or chars[0]
     mgr.load(name)
-    set_character(mgr.active, mgr.character)
+    set_character(mgr.active, mgr.character, char_dir=mgr.char_dir)
 
     user_id  = "local_debug"
     username = input("Username [Shinri]: ").strip() or "Shinri"

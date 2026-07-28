@@ -7,6 +7,18 @@ Output: update ke semua memory layer (working/relationship/knowledge/long)
 
 Prompt kecil → JSON → dispatch ke masing-masing memory module.
 Tidak menambah latency ke user karena berjalan di background.
+
+--- PATCH: character_self_facts (konsistensi improvisasi karakter) ---
+Kalau Soul ditanya soal dirinya sendiri (mis. "suka apa?") dan bin karakter
+belum ada datanya, Soul akan MENGARANG jawaban spesifik (mis. "suka baca
+novel judul X"). Tanpa disimpan, pertanyaan yang sama nanti bisa dijawab
+BEDA (Soul ngarang lagi). Reflection sekarang juga mengekstrak detail
+spesifik yang baru diimprovisasi karakter dan menuliskannya ke
+character_memory.bin (via character_memory.set_field/add_want/add_fact),
+supaya jawaban berikutnya konsisten. Fakta yang SUDAH ada di bin (dikirim
+sebagai hint ke prompt reflect) TIDAK ditimpa — field skalar (birthday, dst)
+hanya diisi kalau masih kosong, field list (likes, dst) di-append kalau
+belum ada.
 """
 from __future__ import annotations
 import json, re, threading, time
@@ -16,6 +28,7 @@ import working_memory    as wm_mod
 import relationship_memory as rm_mod
 import knowledge_memory  as km_mod
 import long_memory       as lm_mod
+import character_memory  as cmem_mod  # PATCH: simpan fakta diri karakter yg diimprovisasi
 
 # ── Prompt ────────────────────────────────────────────────────────────────────
 _REFLECT_SYS = """\
@@ -29,7 +42,8 @@ Format:
   "relationship_update":{"trust_delta":0,"romance_delta":0,"preferred_name":"","relation_note":""},
   "experience":{"title":"","description":"","topics":[],"importance":0.0-1.0},
   "summary":"ringkasan singkat sesi ini (max 100 kata)",
-  "working_memory":{"current_goal":"","last_action":"","awaiting_reply":"","short_context":{}}
+  "working_memory":{"current_goal":"","last_action":"","awaiting_reply":"","short_context":{}},
+  "character_self_facts":[{"field":"likes|dislikes|hobbies|fears|wants|backstory|custom","text":"..."}]
 }
 
 Aturan:
@@ -39,6 +53,14 @@ Aturan:
 - experience: isi jika ada kejadian signifikan. title kosong jika tidak ada
 - summary: wajib diisi. ringkasan netral apa yang dibicarakan
 - working_memory: update jika ada goal baru, aksi terakhir, atau menunggu konfirmasi
+- character_self_facts: array KOSONG [] kecuali karakter AI (BUKAN user) menyebutkan DETAIL
+  SPESIFIK baru tentang DIRINYA SENDIRI di respons terakhirnya — mis. judul buku favorit, nama
+  tempat, nama hewan peliharaan, atau detail konkret lain yang kalau ditanya lagi nanti HARUS
+  konsisten (bukan diimprovisasi ulang jadi beda). JANGAN catat generalisasi yang sudah jelas
+  dari kepribadian dasar karakter, dan JANGAN catat ulang fakta yang SUDAH ada di
+  "[Fakta karakter yang sudah tercatat]" di bawah — itu daftar yang sudah tersimpan.
+  field = kategori paling cocok (pakai "custom" kalau tidak ada yang cocok).
+  text = detail SPESIFIK yang disebutkan, ringkas (max ~15 kata).
 - Jangan tulis apapun selain JSON
 """
 
@@ -46,6 +68,7 @@ def _build_reflect_input(
     messages:    List[Dict],
     tool_output: str = "",
     n:           int = 10,
+    known_char_facts: str = "",
 ) -> str:
     lines = []
     recent = messages[-n:]
@@ -55,13 +78,19 @@ def _build_reflect_input(
         lines.append(f"{role}: {content}")
     if tool_output:
         lines.append(f"[Tool Output] {tool_output[:200]}")
+    if known_char_facts:
+        lines.append(f"\n[Fakta karakter yang sudah tercatat]\n{known_char_facts}")
     return "\n".join(lines)
 
+
+_CHARMEM_LIST_FIELDS   = {"likes", "dislikes", "hobbies", "fears", "personality"}
+_CHARMEM_SCALAR_FIELDS = {"full_name", "birthday", "zodiac", "age", "backstory"}
 
 def _dispatch_reflection(
     user_id:  str,
     char_id:  str,
     result:   Dict,
+    char_dir: Optional[str] = None,
 ):
     """Apply reflection result ke semua memory modules."""
     # ── Working Memory ────────────────────────────────────────────────────────
@@ -111,6 +140,47 @@ def _dispatch_reflection(
         lm.add_summary(summary)
     lm_mod.save(lm)
 
+    # ── Character Self Memory ─────────────────────────────────────────────── PATCH
+    # Kalau Soul mengimprovisasi detail spesifik soal DIRINYA (mis. ditanya
+    # "suka apa" dan bin belum ada isinya → Soul ngarang "baca novel judul
+    # X"), simpan detail itu ke character_memory.bin supaya kalau ditanya
+    # lagi nanti jawabannya TETAP SAMA, bukan improvisasi baru tiap kali.
+    char_facts = result.get("character_self_facts", [])
+    if char_facts:
+        cm = cmem_mod.load(char_id, char_dir=char_dir)
+        changed = False
+        for cf in char_facts:
+            fkey = str(cf.get("field", "custom") or "custom").strip().lower()
+            text = str(cf.get("text", "") or "").strip()
+            if not text:
+                continue
+
+            if fkey == "wants":
+                cm.add_want(text)
+                changed = True
+            elif fkey in _CHARMEM_LIST_FIELDS:
+                existing = cm.get_field(fkey, [])
+                if isinstance(existing, str):
+                    existing = [existing] if existing else []
+                elif not isinstance(existing, list):
+                    existing = []
+                if text not in existing:
+                    existing.append(text)
+                    cm.set_field(fkey, existing)
+                    changed = True
+            elif fkey in _CHARMEM_SCALAR_FIELDS:
+                # Field "canon" (mis. tanggal lahir) HANYA diisi kalau masih
+                # kosong — jangan overwrite fakta yang sudah ditetapkan.
+                if not cm.get_field(fkey):
+                    cm.set_field(fkey, text)
+                    changed = True
+            else:
+                cm.add_fact(text)  # custom_facts
+                changed = True
+
+        if changed:
+            cmem_mod.save(cm, char_dir=char_dir)
+
 
 def run(
     user_id:     str,
@@ -119,19 +189,36 @@ def run(
     llm_call,
     tool_output: str = "",
     async_mode:  bool = True,
+    char_dir:    Optional[str] = None,
     dbg=None,
 ):
     """
     Entry point. Jalankan reflection.
     async_mode=True → daemon thread (tidak block main flow).
     async_mode=False → blocking (untuk testing).
+    char_dir: folder karakter aktif — WAJIB diteruskan (mis. dari
+        CharacterManager.char_dir) supaya character_self_facts baru
+        (PATCH) ditulis ke character_memory.bin milik karakter yang benar,
+        bukan file global lama. Tanpa ini, fallback ke path lama
+        (lihat character_memory._char_path()).
     """
     def _log(msg):
         if dbg: dbg.line(msg)
 
     def _do_reflect():
         try:
-            reflect_input = _build_reflect_input(messages, tool_output)
+            known_char_facts = ""
+            try:
+                cm_snapshot = cmem_mod.load(char_id, char_dir=char_dir)
+                known_char_facts = cm_snapshot.summary_for_context()
+                if known_char_facts == "(belum ada data karakter)":
+                    known_char_facts = ""
+            except Exception:
+                known_char_facts = ""
+
+            reflect_input = _build_reflect_input(
+                messages, tool_output, known_char_facts=known_char_facts,
+            )
             resp = llm_call(
                 "react",
                 messages=[
@@ -144,8 +231,12 @@ def run(
             raw = (resp.choices[0].message.content or "").strip()
             raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I).strip()
             result = json.loads(raw)
-            _dispatch_reflection(user_id, char_id, result)
-            _log(f"  [REFLECT] ✅ done — facts={len(result.get('new_facts',[]))} lessons={len(result.get('new_lessons',[]))}")
+            _dispatch_reflection(user_id, char_id, result, char_dir=char_dir)
+            _log(
+                f"  [REFLECT] ✅ done — facts={len(result.get('new_facts',[]))} "
+                f"lessons={len(result.get('new_lessons',[]))} "
+                f"char_facts={len(result.get('character_self_facts',[]))}"
+            )
         except json.JSONDecodeError as e:
             _log(f"  [REFLECT] ⚠️ JSON parse error: {e}")
         except Exception as e:

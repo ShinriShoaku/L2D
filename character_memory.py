@@ -138,13 +138,43 @@ def _global_path() -> str:
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, _FILE)
 
+def _auto_discover_char_dir(character_id: str) -> Optional[str]:
+    """
+    PATCH: Fallback auto-discovery kalau caller TIDAK memberikan char_dir.
+    Meniru logika character_manager._find_character_dir(): cari
+    characters/<character_id>/ atau character/<character_id>/ relatif ke
+    lokasi module ini, yang sudah punya character.json dan/atau
+    character_memory.bin.
+
+    Ini defense-in-depth: idealnya setiap caller (context_composer.py, dll)
+    selalu meneruskan char_dir eksplisit dari CharacterManager.char_dir.
+    Tapi kalau ada satu titik pemanggilan yang lupa (atau file belum
+    di-deploy), fallback ini mencegah data karakter "hilang" begitu saja ke
+    file global kosong — root cause paling umum dari "bin sudah digenerate
+    tapi tidak kebaca".
+    """
+    base = os.path.dirname(os.path.abspath(__file__))
+    for parent in ("characters", "character"):
+        candidate = os.path.join(base, parent, character_id)
+        if os.path.isdir(candidate) and (
+            os.path.isfile(os.path.join(candidate, "character.json"))
+            or os.path.isfile(os.path.join(candidate, _FILE))
+        ):
+            return candidate
+    return None
+
 def _char_path(character_id: str, char_dir: Optional[str] = None) -> str:
     """Path file bin untuk satu karakter.
     Kalau char_dir diberikan: characters/<nama>/character_memory.bin
-    Kalau tidak: fallback ke state/character_memory.bin (global, lama).
+    Kalau tidak: coba auto-discover folder characters/<nama>/ dulu (PATCH).
+    Kalau tetap tidak ketemu: fallback ke state/character_memory.bin
+    (global, lama — sengaja dipertahankan untuk backward compat).
     """
     if char_dir:
         return os.path.join(char_dir, _FILE)
+    auto = _auto_discover_char_dir(character_id)
+    if auto:
+        return os.path.join(auto, _FILE)
     return _global_path()
 
 # ─── Low-level binary read/write ─────────────────────────────────────────────
@@ -332,6 +362,50 @@ class CharacterMemory:
         sorted_w = sorted(self.wants, key=lambda x: x.get("priority", 0), reverse=True)
         return [w["text"] for w in sorted_w[:n]]
 
+    def field_summary_for_context(self, keys: List[str]) -> str:
+        """
+        PATCH v3: versi TARGETED dari summary_for_context() — cuma keluarkan
+        field yang diminta (mis. ["birthday"]), bukan seluruh profil.
+        Ini yang bikin context hemat token: kalau user cuma nanya 1 hal
+        spesifik, kita nggak perlu kirim nama+zodiak+suka+tidak_suka+hobi+dst
+        sekaligus, cukup baris yang relevan.
+
+        keys boleh berisi:
+          - key attribute biasa ("birthday", "likes", dst — lihat _LABELS)
+          - "wants"        → keinginan/goals karakter
+          - "custom_facts" → catatan tambahan
+          - "general"      → sinyal "tidak spesifik", diabaikan di sini
+                              (caller yang decide fallback ke summary penuh)
+
+        Return "(belum ada data karakter)" kalau semua key yang diminta kosong,
+        supaya caller tahu harus fallback (mis. ke summary_for_context() penuh
+        atau ke tier validasi berikutnya).
+        """
+        lines: List[str] = []
+        for k in keys:
+            k = (k or "").strip().lower()
+            if not k or k == "general":
+                continue
+            if k == "wants":
+                wants = self.get_wants(5)
+                if wants:
+                    lines.append(f" - Keinginan: {'; '.join(wants)}")
+                continue
+            if k == "custom_facts":
+                recent = [f["text"] for f in self.custom_facts[-3:]]
+                if recent:
+                    lines.append(f" - Catatan tambahan: {'; '.join(recent)}")
+                continue
+            v = self.attributes.get(k)
+            if v in (None, "", [], {}):
+                continue
+            label = _LABELS.get(k) or k.replace("_", " ").strip().capitalize()
+            lines.append(f" - {label}: {_fmt_value(v)}")
+
+        if not lines:
+            return "(belum ada data karakter)"
+        return "\n".join(["[Profil Diri Karakter]"] + lines)
+
     def summary_for_context(self) -> str:
         if not self.attributes and not self.wants and not self.custom_facts:
             return "(belum ada data karakter)"
@@ -430,6 +504,142 @@ class CharacterMemory:
                 cm.add_want(str(w), priority=1.0 - i * 0.1)
 
         return cm
+
+# ─── PATCH v3: Field detection (hemat token) ─────────────────────────────────
+#
+# Tujuan: waktu user tanya sesuatu yang spesifik tentang karakter (mis. "kapan
+# ulang tahunmu?"), composer TIDAK perlu kirim seluruh character_memory.bin
+# (nama+zodiak+suka+tidak_suka+hobi+takut+dst) ke Soul — cukup 1 baris yang
+# relevan. Ada 2 tingkat deteksi, dari yang paling murah ke yang paling mahal:
+#
+#   Tier 1 — guess_field()            : keyword matching lokal, TANPA LLM call
+#                                        sama sekali. Nangkep >90% kasus umum.
+#   Tier 2 — resolve_relevant_fields() : kalau Tier 1 gagal & need_self_memory
+#                                        tetap true, probe field SATU PER SATU
+#                                        ke LLM murah (bukan kirim semua field
+#                                        sekaligus) dan STOP begitu dapat match
+#                                        pertama — ini bagian "validasi
+#                                        bertahap, kirim sedikit-sedikit" yang
+#                                        diminta, bukan dump semua isi bin.
+#
+# Kalau kedua tier gagal, caller (context_composer.py) fallback ke
+# summary_for_context() penuh seperti perilaku lama — jadi tidak ada regresi.
+
+_FIELD_KEYWORDS: Dict[str, tuple] = {
+    "birthday":    ("ulang tahun", "ultah", "tanggal lahir", "lahir", "birthday", "bday"),
+    "zodiac":      ("zodiak", "zodiac", "rasi bintang", "bintang"),
+    "age":         ("umur", "usia", "berapa tahun", "age"),
+    "full_name":   ("siapa namamu", "nama kamu", "nama lengkap", "your name"),
+    "likes":       ("suka apa", "kesukaan", "hal yang disukai", "favorit", "likes"),
+    "dislikes":    ("tidak suka", "gak suka", "benci", "dislikes", "hindari"),
+    "hobbies":     ("hobi", "kegiatan favorit", "hobby", "hobbies"),
+    "fears":       ("takut", "ketakutan", "phobia", "fears"),
+    "personality": ("sifat", "kepribadian", "karaktermu", "personality"),
+    "backstory":   ("masa lalu", "latar belakang", "cerita hidup", "backstory", "bio"),
+    "wants":       ("keinginan", "cita-cita", "mau apa", "goals", "impian"),
+}
+
+def guess_field(text: str) -> Optional[str]:
+    """
+    Tier 1: cocokkan teks (biasanya state.topic atau user_input) ke salah satu
+    canonical field via keyword sederhana. TANPA LLM call — nol biaya token
+    tambahan. Return None kalau tidak ada yang cocok (caller lanjut ke tier
+    berikutnya atau fallback summary penuh).
+    """
+    if not text:
+        return None
+    t = text.strip().lower()
+    for canon, keywords in _FIELD_KEYWORDS.items():
+        for kw in keywords:
+            if kw in t:
+                return canon
+    return None
+
+_FIELD_PROBE_SYS = (
+    "Jawab HANYA: yes atau no\n"
+    "yes = pertanyaan user MEMBUTUHKAN data field ini untuk dijawab\n"
+    "no  = field ini tidak relevan dengan pertanyaan user\n"
+)
+
+def _probe_field_relevant(user_text: str, label: str, value_preview: str, llm_call) -> bool:
+    """Satu probe kecil: kirim SATU field (label + preview singkat) ke LLM
+    murah, tanya relevan atau tidak. Dipakai iteratif oleh
+    resolve_relevant_fields() supaya tidak pernah kirim semua field sekaligus."""
+    try:
+        resp = llm_call(
+            "react",
+            messages=[
+                {"role": "system", "content": _FIELD_PROBE_SYS},
+                {"role": "user", "content": (
+                    f'Pertanyaan user: "{user_text}"\n'
+                    f'Field: {label} = {value_preview[:120]}'
+                )},
+            ],
+            temperature=0.0,
+            max_tokens=5,
+        )
+        raw = (resp.choices[0].message.content or "").strip().lower()
+        return raw.startswith("yes") or raw.startswith("ya")
+    except Exception:
+        return False
+
+def resolve_relevant_fields(
+    cm: "CharacterMemory",
+    query_text: str,
+    llm_call=None,
+    dbg=None,
+    max_probe: int = 6,
+) -> List[str]:
+    """
+    Cari field mana yang relevan dengan query_text, dari yang termurah:
+      1. guess_field() lokal (tanpa LLM) — kalau match & field itu ada isinya
+         di cm, langsung return.
+      2. Kalau tidak match & llm_call tersedia: probe field SATU PER SATU
+         (urut _SUMMARY_PRIORITY dulu, baru sisanya) dan STOP di probe
+         pertama yang "yes" — jadi paling banyak `max_probe` field kecil
+         terkirim ke LLM, bukan seluruh bin sekaligus.
+    Return list kosong kalau tidak ada yang ketemu → caller fallback ke
+    summary_for_context() penuh (perilaku lama, tetap aman).
+    """
+    def _log(msg):
+        if dbg: dbg.line(msg)
+
+    guessed = guess_field(query_text)
+    if guessed:
+        has_value = (
+            (guessed == "wants" and cm.wants)
+            or (guessed != "wants" and cm.attributes.get(guessed) not in (None, "", [], {}))
+        )
+        if has_value:
+            _log(f"  [CHARMEM] tier1 keyword match → field={guessed}")
+            return [guessed]
+
+    if not llm_call:
+        return []
+
+    ordered = [k for k in _SUMMARY_PRIORITY if k in cm.attributes]
+    ordered += [k for k in cm.attributes.keys() if k not in ordered]
+    if cm.wants:
+        ordered.append("wants")
+
+    probed = 0
+    for k in ordered:
+        if probed >= max_probe:
+            break
+        if k == "wants":
+            label = "Keinginan"
+            preview = "; ".join(cm.get_wants(3))
+        else:
+            label = _LABELS.get(k) or k.replace("_", " ").capitalize()
+            preview = _fmt_value(cm.attributes.get(k))
+        probed += 1
+        _log(f"  [CHARMEM] tier2 probe {probed}/{max_probe} → field={k}")
+        if _probe_field_relevant(query_text, label, preview, llm_call):
+            _log(f"  [CHARMEM] tier2 match → field={k}")
+            return [k]
+
+    _log("  [CHARMEM] tidak ada field relevan ditemukan (fallback ke summary penuh)")
+    return []
 
 # ─── AI-based auto-generate ─────────────────────────────────────────────────
 

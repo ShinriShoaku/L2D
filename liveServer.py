@@ -726,7 +726,7 @@ class LiveServer:
             choice = input(f"Select [{chars[0]}]: ").strip()
             name   = choice if choice in chars else chars[0]
         if self.char_mgr.load(name):
-            set_character(name, self.char_mgr.character)
+            set_character(name, self.char_mgr.character, char_dir=self.char_mgr.char_dir)
         else:
             print(f"❌ [CHAR] Failed to load '{name}'")
 

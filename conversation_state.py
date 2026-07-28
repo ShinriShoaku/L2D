@@ -60,15 +60,22 @@ FRAMES = {
 }
 
 # Frame → default routing hints (dipakai Decision Graph nanti)
+# need_memory        = butuh data memory tentang USER (working/relationship/knowledge)
+# need_self_memory   = butuh data memory tentang KARAKTER AI sendiri (identitas,
+#                       tanggal lahir, suka/tidak suka, hobi, backstory, dll —
+#                       lihat character_memory.py). Task terpisah dari need_memory
+#                       supaya akurasinya jelas: pertanyaan "kamu ulang tahun kapan?"
+#                       tidak butuh data USER sama sekali, tapi WAJIB butuh data diri
+#                       karakter — dua kebutuhan yang berbeda, jadi dua flag berbeda.
 FRAME_HINTS: Dict[str, Dict[str, bool]] = {
-    "CHAT":         {"need_history": False, "need_tool": False, "need_memory": False, "soul_deep": False},
-    "FOLLOW_UP":    {"need_history": True,  "need_tool": False, "need_memory": False, "soul_deep": False},
-    "MEMORY_EDIT":  {"need_history": True,  "need_tool": True,  "need_memory": True,  "soul_deep": False},
-    "EMOTIONAL":    {"need_history": False, "need_tool": False, "need_memory": False, "soul_deep": True},
-    "KNOWLEDGE":    {"need_history": False, "need_tool": False, "need_memory": False, "soul_deep": True},
-    "ROLEPLAY":     {"need_history": True,  "need_tool": False, "need_memory": False, "soul_deep": True},
-    "TASK":         {"need_history": False, "need_tool": True,  "need_memory": False, "soul_deep": False},
-    "CONFIRMATION": {"need_history": True,  "need_tool": True,  "need_memory": False, "soul_deep": False},
+    "CHAT":         {"need_history": False, "need_tool": False, "need_memory": False, "need_self_memory": False, "soul_deep": False},
+    "FOLLOW_UP":    {"need_history": True,  "need_tool": False, "need_memory": False, "need_self_memory": False, "soul_deep": False},
+    "MEMORY_EDIT":  {"need_history": True,  "need_tool": True,  "need_memory": True,  "need_self_memory": False, "soul_deep": False},
+    "EMOTIONAL":    {"need_history": False, "need_tool": False, "need_memory": False, "need_self_memory": False, "soul_deep": True},
+    "KNOWLEDGE":    {"need_history": False, "need_tool": False, "need_memory": False, "need_self_memory": False, "soul_deep": True},
+    "ROLEPLAY":     {"need_history": True,  "need_tool": False, "need_memory": False, "need_self_memory": True,  "soul_deep": True},
+    "TASK":         {"need_history": False, "need_tool": True,  "need_memory": False, "need_self_memory": False, "soul_deep": False},
+    "CONFIRMATION": {"need_history": True,  "need_tool": True,  "need_memory": False, "need_self_memory": False, "soul_deep": False},
 }
 
 
@@ -105,6 +112,10 @@ class ConversationState:
     new_topic:             bool = True
     need_history:          bool = False
     need_memory:           bool = False
+    need_self_memory:      bool = False   # PATCH: butuh data memori diri KARAKTER (bukan user)
+    self_memory_field:     str  = ""      # PATCH v3: field SPESIFIK yg ditanya, mis. "birthday".
+                                           # "" / "general" = tidak spesifik (fallback ke ringkasan).
+                                           # Dipakai composer supaya cuma kirim 1 field, bukan semua.
     need_tool:             bool = False
     importance:            float = 0.5
     complexity:            int   = 1            # 0-17 CCS sederhana (lihat compute_ccs)
@@ -130,9 +141,11 @@ class ConversationState:
     def summary_line(self) -> str:
         """Ringkasan satu baris untuk debug log."""
         pa = f" pending={self.pending_action.tool}" if self.pending_action and not self.pending_action.is_empty() else ""
+        smf = f" self_field={self.self_memory_field}" if self.self_memory_field else ""
         return (
             f"frame={self.frame} topic={self.topic!r} stage={self.stage} "
-            f"emotion={self.emotion} conf={self.confidence:.2f}{pa}"
+            f"emotion={self.emotion} conf={self.confidence:.2f} "
+            f"need_mem={self.need_memory} need_self_mem={self.need_self_memory}{smf}{pa}"
         )
 
 
@@ -248,11 +261,19 @@ def clear_state(user_id: str) -> bool:
 # ANALYZER — 1 LLM call: baca last N messages + state lama → state baru
 # ═════════════════════════════════════════════════════════════════════════════
 
+# Enum valid untuk self_memory_field — HARUS sinkron dengan _LABELS di
+# character_memory.py (+ "wants" & "general" yang bukan attribute biasa).
+_SELF_MEMORY_FIELDS = {
+    "full_name", "birthday", "zodiac", "age", "personality",
+    "likes", "dislikes", "hobbies", "fears", "backstory",
+    "wants", "general",
+}
+
 _ANALYZER_SYS = """\
 Analisa kondisi percakapan saat ini. Jawab HANYA JSON satu baris.
 
 Format output:
-{"topic":"...","frame":"FRAME","stage":"new_topic|follow_up|continuation","emotion":"...","references_previous":true/false,"need_history":true/false,"need_memory":true/false,"need_tool":true/false,"importance":0.0-1.0,"confidence":0.0-1.0}
+{"topic":"...","frame":"FRAME","stage":"new_topic|follow_up|continuation","emotion":"...","references_previous":true/false,"need_history":true/false,"need_memory":true/false,"need_self_memory":true/false,"self_memory_field":"FIELD","need_tool":true/false,"importance":0.0-1.0,"confidence":0.0-1.0}
 
 FRAME (pilih salah satu):
   CHAT          = greeting/ekspresi ringan, tidak butuh apapun
@@ -267,6 +288,34 @@ FRAME (pilih salah satu):
 Gunakan STATE SEBELUMNYA untuk menentukan apakah ini follow_up/continuation.
 Jika pesan pendek ("iya","ya","jangan") dan state sebelumnya punya pending_action,
 frame HARUS "CONFIRMATION" dan references_previous=true.
+
+need_memory vs need_self_memory (DUA HAL BERBEDA, jangan disamakan):
+  need_memory      = true jika butuh data tentang USER yang chat (romance, info,
+                      preferensi, riwayat obrolan dia). Contoh: "aku pernah cerita apa?"
+  need_self_memory = true jika pertanyaan/topik menyinggung identitas atau sifat
+                      KARAKTER AI itu sendiri — nama, tanggal lahir, umur, zodiak,
+                      suka/tidak suka, hobi, kepribadian, latar belakang, keinginan.
+                      Contoh: "kamu ulang tahun kapan?", "kesukaanmu apa?",
+                      "ceritain masa lalumu". Kedua flag BOLEH true bersamaan
+                      jika pertanyaannya menyinggung user DAN karakter sekaligus.
+
+self_memory_field (HANYA diisi kalau need_self_memory=true — hemat token,
+supaya composer tidak perlu kirim SELURUH profil karakter, cukup 1 field):
+  Pilih SATU yang paling cocok dengan pertanyaan:
+    full_name | birthday | zodiac | age | personality | likes | dislikes |
+    hobbies | fears | backstory | wants | general
+  - "birthday"    = tanggal lahir / ulang tahun
+  - "zodiac"      = zodiak / rasi bintang
+  - "likes"       = kesukaan / hal yang disukai
+  - "dislikes"    = ketidaksukaan / hal yang dibenci
+  - "hobbies"     = hobi / kegiatan favorit
+  - "fears"       = ketakutan / hal yang ditakuti
+  - "personality" = sifat / kepribadian
+  - "backstory"   = masa lalu / latar belakang cerita
+  - "wants"       = keinginan / cita-cita / goals
+  - "general"     = pertanyaan identitas KARAKTER yang luas/tidak spesifik,
+                     atau kalau tidak yakin field mana yang cocok
+  Kalau need_self_memory=false, isi dengan string kosong "".
 
 Jangan tulis apapun selain JSON.
 """
@@ -331,7 +380,7 @@ def analyze(
                 {"role": "user",   "content": analyzer_input},
             ],
             temperature=0.0,
-            max_tokens=150,
+            max_tokens=180,
         )
         raw = (resp.choices[0].message.content or "").strip()
         raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I).strip()
@@ -342,7 +391,8 @@ def analyze(
         parsed = {
             "topic": "", "frame": "CHAT", "stage": "new_topic", "emotion": "neutral",
             "references_previous": False, "need_history": False, "need_memory": False,
-            "need_tool": False, "importance": 0.3, "confidence": 0.5,
+            "need_self_memory": False, "self_memory_field": "", "need_tool": False,
+            "importance": 0.3, "confidence": 0.5,
         }
 
     frame = str(parsed.get("frame", "CHAT")).upper()
@@ -367,9 +417,19 @@ def analyze(
     # selalu True meski model return False. Model boleh upgrade (False→True)
     # tapi tidak boleh downgrade (True→False) dari apa yang FRAME_HINTS bilang.
     _hints = FRAME_HINTS.get(frame, {})
-    _llm_need_history = bool(parsed.get("need_history", False))
-    _llm_need_memory  = bool(parsed.get("need_memory",  False))
-    _llm_need_tool    = bool(parsed.get("need_tool",    False))
+    _llm_need_history      = bool(parsed.get("need_history", False))
+    _llm_need_memory       = bool(parsed.get("need_memory",  False))
+    _llm_need_self_memory  = bool(parsed.get("need_self_memory", False))
+    _llm_need_tool         = bool(parsed.get("need_tool",    False))
+
+    _self_field_raw = str(parsed.get("self_memory_field", "") or "").strip().lower()
+    _self_field = _self_field_raw if _self_field_raw in _SELF_MEMORY_FIELDS else (
+        "general" if _self_field_raw else ""
+    )
+    # need_self_memory boleh di-upgrade ke True kalau model kasih field spesifik
+    # tapi lupa set flagnya sendiri — field spesifik = sinyal kuat butuh data karakter.
+    if _self_field and _self_field != "":
+        _llm_need_self_memory = True
 
     new_state = ConversationState(
         user_id              = user_id,
@@ -381,9 +441,11 @@ def analyze(
         references_previous  = bool(parsed.get("references_previous", False)),
         continuation         = parsed.get("stage") == "continuation",
         new_topic            = parsed.get("stage") == "new_topic",
-        need_history         = _llm_need_history or _hints.get("need_history", False),
-        need_memory          = _llm_need_memory  or _hints.get("need_memory",  False),
-        need_tool            = _llm_need_tool    or _hints.get("need_tool",    False),
+        need_history         = _llm_need_history      or _hints.get("need_history", False),
+        need_memory          = _llm_need_memory       or _hints.get("need_memory",  False),
+        need_self_memory     = _llm_need_self_memory  or _hints.get("need_self_memory", False),
+        self_memory_field    = _self_field,
+        need_tool            = _llm_need_tool         or _hints.get("need_tool",    False),
         importance           = float(parsed.get("importance", 0.5)),
         complexity           = compute_simple_complexity(user_input, frame),
         confidence           = float(parsed.get("confidence", 0.7)),

@@ -100,6 +100,8 @@ class CharacterManager:
         )
         return True
 
+    
+
     @property
     def active(self) -> Optional[str]:
         return self._name
