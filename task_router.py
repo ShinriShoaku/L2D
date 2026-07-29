@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 from typing import Dict, List, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -38,6 +39,23 @@ if TYPE_CHECKING:
 # ═════════════════════════════════════════════════════════════════════════════
 # KATEGORI & TOOL MAP
 # ═════════════════════════════════════════════════════════════════════════════
+
+# PATCH v2: threshold jumlah kategori/task yang dianggap "bakal lama" —
+# begitu decision_graph (+ trigger_phrases safety-net) memutuskan >= angka
+# ini kategori perlu di-Pass B/C, stall_callback dipicu. Tunable tanpa perlu
+# bongkar logic run_task_router().
+_STALL_MIN_CATEGORIES = 2
+
+# PATCH v4: kategori built-in yang SIFATNYA internal/lokal — biasanya
+# selesai dalam 1-2 percobaan tanpa panggilan jaringan eksternal (beda
+# dengan state/event/social/custom/cloud yang sering perlu EXEC ke API
+# luar). Kalau kategori yang dieksplor HANYA berisi ini, jangan trigger
+# stall — root cause laporan "masih pakai interrupt buat percakapan biasa":
+# chat roleplay/romantis (family='character' → categories=['self','meta'])
+# ke-hitung "2 kategori" dan lolos threshold, padahal itu bukan proses
+# yang lama — malah bikin immersion pecah gara-gara ada "tunggu sebentar"
+# di tengah momen roleplay.
+_STALL_FAST_CATEGORIES = {"self", "meta"}
 
 VALID_CATEGORIES = {
     "user", "chat", "state", "event", "game", "social", "self", "meta", "custom", "cloud"
@@ -647,53 +665,180 @@ def _run_pass_bc_for_category(
 LAST_GATE_INFO: Dict = {"gate0": None, "gate1_type": "task", "complexity": "lite"}
 
 
-def run_task_router(
-    user_id:      str,
-    username:     str,
-    user_input:   str,
-    char_prompts: Dict,
-    llm_call,               # _llm_call(pass_name, messages=..., temperature=..., max_tokens=...)
-    dbg=None,               # DebugLogger optional
-    max_retry:    int = 2,  # max retry Pass B per kategori jika Pass C reject
-) -> List[Dict]:
+def _match_trigger_categories(user_input: str, compiled_meta: Dict) -> List[str]:
     """
-    3-Pass Task Router Pipeline.
-    Menggantikan _task_router_pass() di main.py.
+    PATCH: safety-net keyword matching supaya compiled/custom tool (mis.
+    get_weather, category="meta") TIDAK silent ke-skip kalau decision_graph
+    (LLM classifier di gate.py) salah menebak family/kategori untuk input
+    tsb — root cause bug "cuaca ga kepanggil": DG menebak family='live' →
+    categories=['state','event','social'], padahal get_weather terdaftar di
+    kategori 'meta', jadi Pass B+C TIDAK PERNAH dijalankan untuk 'meta' sama
+    sekali, apa pun isi Pass B-nya.
 
-    Returns:
-        List[Dict] berisi {"f": fname, "a": args} yang sudah divalidasi,
-        siap dieksekusi oleh RouterExecutor.
+    Cek trigger_phrases tiap compiled tool terhadap user_input secara
+    harfiah (substring match, tanpa LLM, jadi nol biaya tambahan). Kalau
+    match, kategori tool itu WAJIB ikut di-explore di Pass B — di luar
+    kendali/kesalahan decision_graph.
+
+    Return list kategori (unik) yang wajib ditambahkan, [] kalau tidak ada.
     """
-    from mcp_tools import load_custom_tools  # import di sini untuk hindari circular
-    from tool_compiler import load_compiled_tools, build_pass_b_addon, get_alias_map
+    text = (user_input or "").lower()
+    if not text:
+        return []
+    hit_categories: List[str] = []
+    for tname, meta in (compiled_meta or {}).items():
+        if not isinstance(meta, dict) or not meta.get("enabled", True):
+            continue
+        phrases = meta.get("trigger_phrases") or []
+        if not any(p and str(p).lower() in text for p in phrases):
+            continue
+        cat = str(meta.get("category", "custom")).lower().strip()
+        if cat not in VALID_CATEGORIES:
+            cat = "custom"
+        if cat not in hit_categories:
+            hit_categories.append(cat)
+    return hit_categories
+
+
+# PATCH v6: deskripsi singkat tiap kategori — dipakai HANYA untuk prompt
+# validasi kategori (_validate_categories), bukan ditampilkan ke user.
+_CATEGORY_DESC: Dict[str, str] = {
+    "user":   "data/preferensi USER (bukan karakter)",
+    "chat":   "riwayat/rangkuman percakapan",
+    "state":  "data eksternal real-time: cuaca, kondisi saat ini",
+    "event":  "jadwal, planner, event terjadwal",
+    "game":   "hadiah, gift, poin romance",
+    "social": "hubungan sosial, follow, relasi user lain",
+    "self":   "identitas/kepribadian KARAKTER: nama, suka, sesi role, mood",
+    "meta":   "waktu/tanggal saat ini, command aktif, animasi sistem",
+    "custom": "tool custom buatan user",
+    "cloud":  "baca/simpan/hapus data cloud",
+}
+
+
+def _validate_categories(
+    user_input: str,
+    categories: List[str],
+    llm_call,
+    dbg=None,
+) -> List[str]:
+    """
+    PATCH v6: validasi kategori SEBELUM Pass B/C — 1 call kecil (yes/no per
+    kategori kandidat, bukan konten panjang) buat nyaring kategori yang
+    decision_graph sertakan tapi sebenarnya tidak relevan untuk pertanyaan
+    spesifik ini.
+
+    Root cause yang difix: decision_graph sering nge-pair kategori secara
+    KAKU per family (mis. family='character' hampir selalu → ['self','meta']),
+    padahal belum tentu dua-duanya relevan — contoh nyata: "info hari ini"
+    cuma butuh 'meta' (waktu), TIDAK butuh 'self' (identitas). Tanpa filter
+    ini, 'self' tetap di-Pass B/C penuh: pilih tool → Pass C reject → retry
+    Pass B → baru nyerah — 2-3 LLM call kebuang percuma tiap turn yang
+    "kebetulan" masuk kategori 'character'.
+
+    HANYA jalan kalau len(categories) > 1 — kalau cuma 1 kandidat, tidak ada
+    yang perlu disaring (mubazir manggil validate buat 1 opsi doang). 1 call
+    kecil ini jauh lebih murah daripada 2-4 call yang biasanya kebuang di
+    Pass B/C untuk kategori yang keliru.
+
+    Fail-safe: kalau parsing gagal / error / semua kategori ke-drop, balik
+    ke daftar kategori ASLI (lebih baik sedikit boros daripada kehilangan
+    tool yang sebenarnya perlu).
+    """
+    if len(categories) <= 1:
+        return categories
 
     def _log(msg: str):
         if dbg:
             dbg.line(msg)
 
-    # Load compiled metadata duluan — "sudah di-compile" (punya .bin di
-    # folder tools/) sekarang yang menentukan aktif/tidaknya custom tool,
-    # menggantikan toggle enable/disable yang dulu ada di Settings UI.
-    compiled_meta = load_compiled_tools()
-    alias_map     = get_alias_map()  # alias pendek → nama tool asli
+    desc_lines = "\n".join(f'- {c}: {_CATEGORY_DESC.get(c, c)}' for c in categories)
+    sys_txt = (
+        "Untuk tiap kategori tool di bawah, tentukan apakah BENERAN dibutuhkan "
+        "buat menjawab pesan user ini secara SPESIFIK (bukan sekadar masih "
+        "berhubungan tema besar).\n"
+        f"{desc_lines}\n"
+        'Jawab HANYA JSON satu baris: {"nama_kategori": true/false, ...} '
+        "untuk SEMUA kategori di atas, tanpa teks lain."
+    )
+    try:
+        resp = llm_call(
+            "react",
+            messages=[
+                {"role": "system", "content": sys_txt},
+                {"role": "user", "content": f'Pesan user: "{user_input}"'},
+            ],
+            temperature=0.0,
+            max_tokens=60,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.I).strip()
+        parsed = json.loads(raw)
 
-    # ── Load & kategorisasi custom tools ────────────────────────────────────
+        # default True kalau model lupa sebut salah satu kategori — fail-safe
+        # per-kategori, lebih aman drop cuma yang eksplisit false.
+        kept = [c for c in categories if bool(parsed.get(c, True))]
+        dropped = [c for c in categories if c not in kept]
+
+        if dropped:
+            _log(f"  [CAT VALIDATE] drop {dropped} (tidak relevan) → lanjut hanya {kept}")
+        if not kept:
+            _log("  [CAT VALIDATE] ⚠️  semua kategori ke-drop → fail-safe, tetap pakai semua")
+            return categories
+        return kept
+    except Exception as e:
+        _log(f"  [CAT VALIDATE] ⚠️ error: {e} → fail-safe, tetap pakai semua kategori")
+        return categories
+
+
+def precheck(
+    user_id:      str,
+    username:     str,
+    user_input:   str,
+    llm_call,
+    dbg=None,
+    stall_callback=None,
+) -> Dict:
+    """
+    PATCH v5: bagian gate0 → cache lookup → gate1 → decision_graph →
+    trigger_phrases safety-net → stall trigger. DIPISAH dari execute_categories()
+    supaya caller (main.py) bisa menjalankan fungsi ini BERSAMAAN dengan
+    conversation_state.analyze() lewat concurrency.get_executor() — dua-duanya
+    cuma butuh (user_input, history/llm_call), tidak saling bergantung, tapi
+    sebelumnya dipanggil berurutan.
+
+    Return dict:
+      {"done": True,  "calls": [...]}
+          → sudah final, TIDAK perlu Pass B/C sama sekali (gate0/gate1=chat,
+            atau cache hit). Caller langsung pakai calls ini.
+      {"done": False, "categories": [...], "compiled_meta":.., "alias_map":..,
+       "all_custom":.., "custom_by_cat":.., "has_custom":.., "g1":..}
+          → lanjut ke execute_categories(pre, ...) untuk Pass B/C+EXEC.
+    """
+    from mcp_tools import load_custom_tools
+    from tool_compiler import load_compiled_tools, build_pass_b_addon, get_alias_map
+    from gate import gate0, gate1, decision_graph
+
+    def _log(msg: str):
+        if dbg:
+            dbg.line(msg)
+
+    compiled_meta = load_compiled_tools()
+    alias_map     = get_alias_map()
+
     all_custom: List[Dict] = [
         t for t in load_custom_tools()
         if isinstance(t, dict) and t.get("name") and t["name"] in compiled_meta
     ]
 
-    # Reset dan isi ulang _CATEGORY_TOOLS untuk custom
     _CATEGORY_TOOLS["custom"] = []
-    # Map: cat_name → list nama custom tool untuk kategori itu
-    _custom_by_cat: Dict[str, List[str]] = {cat: [] for cat in VALID_CATEGORIES}
-
+    custom_by_cat: Dict[str, List[str]] = {cat: [] for cat in VALID_CATEGORIES}
     for t in all_custom:
         tname = t["name"]
         tcat  = str(t.get("category", "custom")).lower().strip()
         if tcat not in VALID_CATEGORIES:
             tcat = "custom"
-        _custom_by_cat[tcat].append(tname)
+        custom_by_cat[tcat].append(tname)
         if tname not in _CATEGORY_TOOLS.get(tcat, []):
             _CATEGORY_TOOLS.setdefault(tcat, []).append(tname)
         if tname not in _CATEGORY_TOOLS["custom"]:
@@ -711,16 +856,14 @@ def run_task_router(
     # ══════════════════════════════════════════════════════════════════════
     # GATE 0 — Pure Python, zero LLM
     # ══════════════════════════════════════════════════════════════════════
-    from gate import gate0, gate1, decision_graph
-
     g0 = gate0(user_input)
     if g0 == "chat":
         _log("  [GATE 0] → chat (pure rule match) — skip semua LLM routing")
         LAST_GATE_INFO.update({"gate0": "chat", "gate1_type": "chat", "complexity": "lite"})
-        return []
+        return {"done": True, "calls": []}
 
     # ══════════════════════════════════════════════════════════════════════
-    # CACHE LOOKUP — cek dulu sebelum jalankan gating lanjutan
+    # CACHE LOOKUP
     # ══════════════════════════════════════════════════════════════════════
     try:
         from router_cache import lookup as _cache_lookup, save as _cache_save, purge_invalid as _cache_purge
@@ -746,7 +889,7 @@ def run_task_router(
             _log(f"  [CACHE] ⚡ HIT — skip router | calls={[c['f'] for c in cached]}")
             _log("══════════════════════════════════════════════════════════════")
             LAST_GATE_INFO.update({"gate0": None, "gate1_type": "task", "complexity": "lite"})
-            return cached
+            return {"done": True, "calls": cached}
 
     # ══════════════════════════════════════════════════════════════════════
     # GATE 1 — Tiny LLM intent gate
@@ -758,40 +901,151 @@ def run_task_router(
 
     if g1["type"] == "chat":
         _log("  [GATE 1] → chat — skip semua tool routing")
-        return []
+        return {"done": True, "calls": []}
 
     # ══════════════════════════════════════════════════════════════════════
-    # DECISION GRAPH — ganti Pass A monolitik
+    # DECISION GRAPH
     # ══════════════════════════════════════════════════════════════════════
     _log("\n── DECISION GRAPH ───────────────────────────────────────────")
     categories = decision_graph(user_input, llm_call, has_custom=has_custom, dbg=dbg)
 
+    forced_categories = _match_trigger_categories(user_input, compiled_meta)
+    if forced_categories:
+        missing = [c for c in forced_categories if c not in categories]
+        if missing:
+            _log(
+                f"  [DG] ⚠️  trigger_phrases match tool di kategori {missing} "
+                f"tapi decision_graph tidak menyertakannya → dipaksa ditambahkan"
+            )
+            categories = list(categories) + missing
+
     if not categories:
         _log("  [DG] ⚠️  tidak ada kategori terdeteksi, skip tool routing")
-        return []
+        return {"done": True, "calls": []}
 
-    # ══════════════════════════════════════════════════════════════════════
-    # PASS B + C — per kategori (reuse existing logic)
-    # ══════════════════════════════════════════════════════════════════════
-    final_calls: List[Dict] = []
-    already_funcs: set      = set()
+    # ── PATCH v6: validasi kategori — saring yang tidak relevan SEBELUM
+    # Pass B/C (lihat docstring _validate_categories). Stall trigger di
+    # bawah SENGAJA pakai `categories` versi SUDAH disaring ini, supaya
+    # hitungan "berapa kategori" juga akurat (kategori yang di-drop tidak
+    # ikut menyumbang ke threshold stall).
+    categories = _validate_categories(user_input, categories, llm_call, dbg=dbg)
+    if not categories:
+        _log("  [CAT VALIDATE] ⚠️  tidak ada kategori tersisa, skip tool routing")
+        return {"done": True, "calls": []}
 
-    for cat_idx, cat in enumerate(categories, 1):
-        _log(f"\n── PASS B+C [{cat_idx}/{len(categories)}]: [{cat.upper()}] {'─'*40}")
-        _log(f"  built-in tools : {_CATEGORY_TOOLS.get(cat, [])}")
+    all_fast_categories = bool(categories) and all(c in _STALL_FAST_CATEGORIES for c in categories)
 
-        extra_for_cat   = _custom_by_cat.get(cat, [])
-        custom_for_cat  = (
-            [t for t in all_custom if t["name"] in extra_for_cat]
-            if cat == "custom"
-            else [t for t in all_custom if str(t.get("category","custom")).lower() == cat]
+    if (
+        stall_callback is not None
+        and len(categories) >= _STALL_MIN_CATEGORIES
+        and not all_fast_categories
+    ):
+        _log(
+            f"  [STALL] {len(categories)} kategori terdeteksi "
+            f"(>={_STALL_MIN_CATEGORIES}) → trigger pesan tunggu (thread terpisah, non-blocking)"
         )
 
-        call = _run_pass_bc_for_category(
+        def _run_stall():
+            try:
+                stall_callback(user_input)
+            except Exception as e:
+                _log(f"  [STALL] ⚠️ error (background thread): {e}")
+
+        threading.Thread(target=_run_stall, daemon=True, name="stall-message").start()
+    elif stall_callback is not None and len(categories) >= _STALL_MIN_CATEGORIES and all_fast_categories:
+        _log(
+            f"  [STALL] {len(categories)} kategori ({categories}) tapi semuanya "
+            f"internal/cepat ({sorted(_STALL_FAST_CATEGORIES)}) → skip, tidak trigger pesan tunggu"
+        )
+
+    return {
+        "done":          False,
+        "categories":    categories,
+        "compiled_meta": compiled_meta,
+        "alias_map":     alias_map,
+        "all_custom":    all_custom,
+        "custom_by_cat": custom_by_cat,
+        "has_custom":    has_custom,
+        "g1":            g1,
+        "cache_save":    _cache_save if _cache_available else None,
+    }
+
+
+def execute_categories(
+    pre:          Dict,
+    user_id:      str,
+    username:     str,
+    user_input:   str,
+    char_prompts: Dict,
+    llm_call,
+    dbg=None,
+    max_retry:    int = 2,
+) -> List[Dict]:
+    """
+    PATCH v5: Pass B+C per kategori — dijalankan PARALEL lewat shared bounded
+    executor (concurrency.py), dibatasi MAX_PARALLEL_LLM slot (samakan dengan
+    setting "max concurrent" di server inference lokal kamu — LM Studio: 2).
+    Sebelumnya kategori dieksplor satu-satu berurutan (state → event → social
+    → meta); sekarang ditembak sekaligus, ke-antre otomatis di level pool
+    kalau jumlah kategori > slot yang tersedia.
+
+    Catatan thread-safety: `already_funcs` dibaca oleh tiap kategori yang
+    jalan (mis. buat cloud short-circuit) tapi HANYA di-update SETELAH semua
+    future selesai (lihat loop as_completed di bawah) — jadi selama fase
+    paralel, kategori yang jalan bersamaan tidak saling tahu satu sama lain
+    baru pilih tool apa. Kalau 2 kategori kebetulan pilih tool yang SAMA,
+    duplikatnya tetap ke-filter di loop pengumpulan hasil (sama seperti
+    perilaku lama) — cuma sedikit lebih boros (tool ke-2 nya kepilih sia-sia)
+    dibanding versi sekuensial yang bisa saling cegah dari awal. Trade-off
+    ini sepadan dengan speedup dari paralelisasi.
+    """
+    from concurrency import get_executor
+    import concurrent.futures as _cf
+
+    def _log(msg: str):
+        if dbg:
+            dbg.line(msg)
+
+    categories    = pre["categories"]
+    compiled_meta = pre["compiled_meta"]
+    alias_map     = pre["alias_map"]
+    all_custom    = pre["all_custom"]
+    custom_by_cat = pre["custom_by_cat"]
+    g1            = pre["g1"]
+    _cache_save   = pre.get("cache_save")
+
+    already_funcs: set = set()
+    ex = get_executor()
+
+    _log(
+        f"\n── PASS B+C — {len(categories)} kategori, paralel "
+        f"(maks {ex._max_workers} slot bersamaan) ──────────────"
+    )
+
+    futures = {}
+    for cat in categories:
+        extra_for_cat  = custom_by_cat.get(cat, [])
+        custom_for_cat = (
+            [t for t in all_custom if t["name"] in extra_for_cat]
+            if cat == "custom"
+            else [t for t in all_custom if str(t.get("category", "custom")).lower() == cat]
+        )
+        fut = ex.submit(
+            _run_pass_bc_for_category,
             cat, user_id, username, user_input, char_prompts, llm_call,
             custom_for_cat, extra_for_cat, compiled_meta, alias_map,
             already_funcs, max_retry, dbg,
         )
+        futures[fut] = cat
+
+    final_calls: List[Dict] = []
+    for fut in _cf.as_completed(futures):
+        cat = futures[fut]
+        try:
+            call = fut.result()
+        except Exception as e:
+            _log(f"  ⚠️  [{cat}] error saat Pass B/C: {e}")
+            continue
 
         if call is not None:
             fname = call["f"]
@@ -800,7 +1054,7 @@ def run_task_router(
                 already_funcs.add(fname)
                 _log(f"  ★  CONFIRMED [{cat}]: f={fname} a={call.get('a',{})}")
             else:
-                _log(f"  ⚠️  SKIP [{cat}]: f={fname} sudah ada di hasil lain")
+                _log(f"  ⚠️  SKIP [{cat}]: f={fname} sudah ada di hasil lain (duplikat lintas-kategori)")
         else:
             _log(f"  ✗  SKIP [{cat}] — tidak ada tool valid")
 
@@ -812,7 +1066,7 @@ def run_task_router(
         _log(f"    [{i}] f={c['f']} a={c.get('a',{})}")
     _log(f"══════════════════════════════════════════════════════════════")
 
-    if _cache_available and final_calls and _cache_save:
+    if _cache_save and final_calls:
         calls_to_cache = []
         for c in final_calls:
             a_clean = {k: v for k, v in c.get("a", {}).items() if k != "id"}
@@ -821,3 +1075,27 @@ def run_task_router(
         _log(f"  [CACHE] 💾 saved — {[c['f'] for c in calls_to_cache]}")
 
     return final_calls
+
+
+def run_task_router(
+    user_id:      str,
+    username:     str,
+    user_input:   str,
+    char_prompts: Dict,
+    llm_call,               # _llm_call(pass_name, messages=..., temperature=..., max_tokens=...)
+    dbg=None,               # DebugLogger optional
+    max_retry:    int = 2,  # max retry Pass B per kategori jika Pass C reject
+    stall_callback=None,    # callable(user_input: str) — lihat docstring precheck()
+) -> List[Dict]:
+    """
+    Compat wrapper — precheck() lalu execute_categories() berurutan.
+
+    Caller yang mau fan-out Analyzer+precheck() secara paralel (lihat
+    concurrency.py) sebaiknya panggil precheck()+execute_categories() secara
+    terpisah, bukan lewat fungsi ini. Fungsi ini dipertahankan supaya
+    caller lama yang belum pindah ke pola paralel tetap jalan tanpa ubahan.
+    """
+    pre = precheck(user_id, username, user_input, llm_call, dbg=dbg, stall_callback=stall_callback)
+    if pre["done"]:
+        return pre["calls"]
+    return execute_categories(pre, user_id, username, user_input, char_prompts, llm_call, dbg=dbg, max_retry=max_retry)

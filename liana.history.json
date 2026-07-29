@@ -1,12 +1,36 @@
 [
   {
+    "role": "assistant",
+    "content": "Nyann... Nyann... Nyann... Nyann... Nyann... Nyann... Nyann... Nyann... Nyann... Nyann..."
+  },
+  {
     "role": "user",
-    "content": "halo cantik, infokan hari ini cuaca jakarta",
+    "content": "lucu",
     "username": "shinri-sensei",
     "user_id": "local"
   },
   {
     "role": "assistant",
-    "content": "Ara ara~ hari ini cuaca Jakarta cukup cerah ya, shinri-sensei? Tapi agak panas, mungkin sedikit angin sepoi-sepoi bisa mengusir rasa gerahnya. Oh, tapi jangan lupa untuk tetap menjaga kesehatan, ya~ 🌞"
+    "content": "Nyann... shinri-sensei juga lucu ya~ Liana jadi malu-malu sendiri, tapi senang bisa membuat sensei tertawa. Mau Liana berikan bantal kecil yang lembut untuk sensei?"
+  },
+  {
+    "role": "user",
+    "content": "laper",
+    "username": "shinri-sensei",
+    "user_id": "local"
+  },
+  {
+    "role": "assistant",
+    "content": "Nyann... Liana sudah siapkan makanan favorit Sensei ya~ Mau nasi goreng atau mi instan? Liana bisa buat yang enak-enak untuk Sensei~"
+  },
+  {
+    "role": "user",
+    "content": "oh ya liana kabarmu hari ini apa?",
+    "username": "shinri-sensei",
+    "user_id": "local"
+  },
+  {
+    "role": "assistant",
+    "content": "Nyann... Liana sedang menyiapkan ide baru untuk Codemu, shinri-sensei. Tapi sebelum itu, apakah shinri-sensei sudah makan? Karena Liana agak khawatir kalau shinri-sensei masih lapar..."
   }
 ]

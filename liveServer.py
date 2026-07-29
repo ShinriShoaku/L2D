@@ -491,6 +491,28 @@ class ResponsePipeline:
                     if not self._is_play:
                         self._play_slot()
 
+            def _on_stall(seg: Dict):
+                """
+                PATCH: filler "tunggu sebentar" — dipanggil dari full_generate()
+                (lewat task_router.py) dari BACKGROUND THREAD terpisah, begitu
+                router mendeteksi banyak kategori/task (bakal lama).
+
+                SENGAJA tidak lewat mekanisme _slot/_play_slot (itu untuk
+                menjaga URUTAN jawaban final antar-user di antrean livechat).
+                Stall message bukan bagian dari antrean itu — dia interrupt
+                "sekarang juga" untuk generation YANG SEDANG BERLANGSUNG ini
+                saja. play_segments() di file ini sudah acquire/release
+                _AUDIO_CHANNEL (Lock global) sendiri dan self-threading, jadi
+                aman dipanggil langsung di sini tanpa blocking _run() —
+                kalau kebetulan channel lagi dipakai audio lain, dia otomatis
+                antre lewat Lock, bukan tabrakan/overlap.
+                """
+                ind_txt = seg.get("ind", "")
+                if not ind_txt:
+                    return
+                print(f"⏳ [STALL] {username}: {ind_txt[:50]}")
+                play_segments([seg], seg.get("anim", "neutral"), self.l2d)
+
             try:
                 user_mem = self.user_mgr.get(user_id, username)
                 segs, expr = full_generate(
@@ -499,6 +521,7 @@ class ResponsePipeline:
                     char_data        = CHARACTER,
                     username         = username,
                     segment_callback = _on_seg,
+                    stall_callback   = _on_stall,
                 )
                 expr_holder[0] = expr
                 # PENTING: full_generate() bisa memutasi user_mem (nickname,

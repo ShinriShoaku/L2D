@@ -37,7 +37,8 @@ from mcp_tools import (
     format_tool_results,
     ToolExecutor,
 )
-from task_router import run_task_router
+from task_router import run_task_router, precheck as _tr_precheck, execute_categories as _tr_execute_categories
+from concurrency import get_executor as _get_pool
 from tool_compiler import boot_check as _tool_compiler_boot
 from settings_ui import open_settings, open_settings_async
 
@@ -551,6 +552,7 @@ def _task_router_pass(
     user_id:    str,
     username:   str,
     user_input: str,
+    stall_callback=None,
 ) -> List[Dict]:
     """
     3-Pass Task Router (via task_router.py):
@@ -560,14 +562,21 @@ def _task_router_pass(
 
     Custom MCP tools otomatis diregistrasikan berdasarkan field "category"
     di mcp_custom_tools.json (Settings UI).
+
+    stall_callback: PATCH v2 — diteruskan apa adanya ke run_task_router().
+        Dipanggil sebagai stall_callback(user_input) begitu router tahu
+        BERAPA BANYAK kategori/task yang bakal dieksplor sudah lewat
+        threshold (lihat _STALL_MIN_CATEGORIES di task_router.py) — SEBELUM
+        Pass B/C+EXEC yang makan waktu.
     """
     calls = run_task_router(
-        user_id      = user_id,
-        username     = username,
-        user_input   = user_input,
-        char_prompts = CHARACTER.get("prompts", {}),
-        llm_call     = _llm_call,
-        dbg          = _dbg,
+        user_id        = user_id,
+        username       = username,
+        user_input     = user_input,
+        char_prompts   = CHARACTER.get("prompts", {}),
+        llm_call       = _llm_call,
+        dbg            = _dbg,
+        stall_callback = stall_callback,
     )
     _dbg.log_step(1, "TASK done", f"{len(calls)} calls: {[c.get('f') for c in calls]}")
     return calls
@@ -1926,6 +1935,52 @@ def _build_trans_messages(sentence: str) -> List[Dict]:
     return messages
 
 
+def _build_stall_messages(user_input: str, char_name: str) -> List[Dict]:
+    """
+    PATCH v2: prompt kecil buat generate pesan "tunggu sebentar" via model
+    LOCAL — beda kata-kata tiap kali dipanggil (bukan pilih dari list statis).
+    Sengaja pendek + max_tokens kecil biar cepat (ini dipanggil PAS di tengah
+    jalan, jadi harus ringan).
+    """
+    sys_txt = (
+        f"Kamu berperan sebagai {char_name}. User baru saja mengirim pesan yang "
+        f"butuh beberapa langkah untuk diproses (bukan jawaban instan).\n"
+        f"Balas dengan SATU kalimat pendek (maksimal 12 kata), bergaya {char_name}, "
+        f"untuk bilang 'tunggu sebentar' ke user.\n"
+        f"Aturan:\n"
+        f"- Variasikan kata-katanya — JANGAN kalimat template yang sama tiap kali.\n"
+        f"- JANGAN sebut alasan teknis (API, server, sistem, proses, loading, dst).\n"
+        f"- Jawab HANYA kalimatnya saja, tanpa tanda kutip, tanpa penjelasan lain."
+    )
+    return [
+        {"role": "system", "content": sys_txt},
+        {"role": "user",   "content": f"Pesan user: {user_input}"},
+    ]
+
+
+def _generate_stall_text(user_input: str, char_name: str) -> Optional[str]:
+    """
+    PATCH v2: panggil model LOCAL (pass_name="react", endpoint yang sama
+    dipakai untuk ReAct/reflection/router_cache) buat generate kalimat
+    "tunggu sebentar" yang bervariasi. temperature dinaikkan supaya tidak
+    monoton. Return None kalau gagal (caller cukup skip, tidak perlu
+    fallback teks statis).
+    """
+    try:
+        resp = _llm_call(
+            "react",
+            messages=_build_stall_messages(user_input, char_name),
+            temperature=0.9,
+            max_tokens=40,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        raw = raw.strip("\"'“”‘’")
+        return raw or None
+    except Exception as e:
+        _dbg.log_error("_generate_stall_text", e)
+        return None
+
+
 def _trans_single(sentence: str) -> Dict:
     """
     Terjemahkan SATU kalimat Indonesia → {id, jp}.
@@ -2050,12 +2105,27 @@ def full_generate(
     char_data:        Dict     = None,
     username:         str      = None,
     segment_callback: Optional[callable] = None,
+    stall_callback:   Optional[callable] = None,
 ) -> Tuple[List[Dict], str]:
     """
     segment_callback(seg: Dict) — dipanggil untuk setiap segmen {ind, jp, anim}
     segera setelah kalimat tersebut selesai ditranslasi. Berguna untuk streaming
     play: TTS bisa mulai sebelum semua kalimat selesai ditranslasi.
     Jika None, perilaku sama seperti sebelumnya (batch, return setelah semua selesai).
+
+    stall_callback(seg: Dict) — PATCH v2: dipanggil PALING BANYAK SEKALI per giliran,
+    dipicu dari task_router.run_task_router() begitu jumlah kategori/task yang
+    bakal dieksplor terdeteksi >= _STALL_MIN_CATEGORIES (lihat task_router.py) —
+    yaitu SEBELUM Pass B/C+EXEC (bagian yang bisa makan waktu beberapa detik)
+    benar-benar jalan. Isinya di-generate LANGSUNG ke model lokal (pass "react")
+    tiap kali dipicu — jadi kata-katanya bervariasi, BUKAN dipilih dari list
+    statis — lalu diterjemahkan (_trans_single) supaya seg berbentuk sama
+    seperti segment_callback ({"ind", "jp", "anim"}) dan bisa langsung
+    di-play/tampilkan sebagai TTS interrupt oleh caller. Setelah task selesai,
+    jawaban final tetap menyusul lewat segment_callback/return seperti biasa
+    — jadi alurnya: [deteksi lama] → generate+TTS interrupt → proses jalan →
+    [selesai] → generate+TTS jawaban final. Kalau None atau generate gagal,
+    tidak ada efek (perilaku sama seperti sebelum patch ini).
     """
     global _last_assistant_response
 
@@ -2063,6 +2133,42 @@ def full_generate(
     char       = char_data or CHARACTER or {}
     char_name  = char_name or _ACTIVE_CHAR_NAME
     animations = char.get("animations", ["shy", "neutral", "happy", "blush", "panicked", "focused", "shock"])
+
+    # ── PATCH v2: stall/filler message — generate ke model lokal ─────────────
+    # Dipicu (paling banyak 1x per giliran) dari dalam _task_router_pass →
+    # run_task_router() begitu JUMLAH kategori/task yang bakal dieksplor
+    # terdeteksi banyak (lihat _STALL_MIN_CATEGORIES di task_router.py) —
+    # yaitu SEBELUM Pass B/C + EXEC tool eksternal (bagian yang bisa makan
+    # waktu beberapa detik) mulai jalan.
+    _stall_fired = {"done": False}
+
+    def _fire_stall_once(stall_input: str):
+        if _stall_fired["done"]:
+            return
+        if stall_callback is None:
+            # PATCH: sebelumnya silent return tanpa jejak log sama sekali —
+            # ini yang bikin susah didiagnosa waktu caller (mis. main() CLI)
+            # lupa/tidak wire parameter stall_callback= ke full_generate().
+            # Router (task_router.py) tetap akan lapor "[STALL] N kategori
+            # terdeteksi → trigger" karena DIA terima closure ini (bukan
+            # None) — tapi kalau baris di bawah ini yang muncul, artinya
+            # caller full_generate() sendiri belum kasih stall_callback.
+            _dbg.line("  [STALL] skip — stall_callback tidak di-set oleh caller full_generate() (None)")
+            _stall_fired["done"] = True
+            return
+        _stall_fired["done"] = True
+        try:
+            text = _generate_stall_text(stall_input, char_name)
+            if not text:
+                _dbg.line("  [STALL] skip — generate gagal/kosong")
+                return
+            trans = _trans_single(text)
+            expr  = random.choice(animations) if animations else "neutral"
+            seg   = {"ind": trans.get("id", text), "jp": trans.get("jp", "えっと…"), "anim": expr}
+            _dbg.line(f"  [STALL] mengirim filler duluan: {seg['ind'][:60]}")
+            stall_callback(seg)
+        except Exception as e:
+            _dbg.log_error("stall_callback", e)
 
     mm    = _model_mem or ModelMemory(char_name, storage_dir=MODEL_MEMORY_DIR)
     ch    = _chat_hist or ChatHistory(char_name, storage_dir=MODEL_MEMORY_DIR)
@@ -2106,7 +2212,21 @@ def full_generate(
     # ── Conversation State Analysis (new memory system) ───────────────────
     # Dilakukan SETELAH history di-load agar analyzer bisa baca last-N messages.
     # Gate 0 check dulu: jika greeting/ekspresi murni → skip LLM analyze call.
+    #
+    # PATCH v5: Analyzer (di sini) dan task_router.precheck() (gate0/cache/
+    # gate1/decision_graph) sama-sama cuma butuh (user_input, history/llm_call)
+    # — TIDAK saling bergantung, tapi sebelumnya dipanggil berurutan (Analyzer
+    # selesai dulu, baru nanti task router mulai). Sekarang ditembak BARENGAN
+    # lewat shared executor (concurrency.py, dibatasi slot sesuai setting
+    # server lokal kamu). Hasil precheck disimpan di _precheck_result, dipakai
+    # nanti di titik pemanggilan router (skip _task_router_pass yang lama).
+    #
+    # Kalau style_cmd sudah literal (skip total tool routing) atau turn ini
+    # ternyata CONFIRMATION (pending action, jalur lain), _precheck_result
+    # cukup dibuang — sedikit kerja sia-sia untuk kasus yang relatif jarang,
+    # demi latency lebih baik di kasus umum.
     _conv_state: Optional["ConversationState"] = None
+    _precheck_result: Optional[Dict] = None
     if _MEMORY_SYSTEM_AVAILABLE:
         try:
             from gate import gate0 as _gate0
@@ -2117,7 +2237,41 @@ def full_generate(
                 _conv_state.frame = "CHAT"
                 _conv_state.complexity = 0
                 _dbg.line(f"  [CONV STATE] gate0=chat → skip LLM analyze, frame=CHAT")
+                if style_cmd is None:
+                    _precheck_result = _tr_precheck(
+                        user_id    = user_mem.user_id,
+                        username   = uname,
+                        user_input = user_input,
+                        llm_call   = _llm_call,
+                        dbg        = _dbg,
+                        stall_callback = _fire_stall_once,
+                    )
+            elif style_cmd is None:
+                _pool = _get_pool()
+                _fut_analyzer = _pool.submit(
+                    _cs_analyze,
+                    user_id    = user_mem.user_id,
+                    user_input = user_input,
+                    history    = history,
+                    llm_call   = _llm_call,
+                    n_history  = 5,
+                    dbg        = _dbg,
+                )
+                _fut_precheck = _pool.submit(
+                    _tr_precheck,
+                    user_id    = user_mem.user_id,
+                    username   = uname,
+                    user_input = user_input,
+                    llm_call   = _llm_call,
+                    dbg        = _dbg,
+                    stall_callback = _fire_stall_once,
+                )
+                _conv_state      = _fut_analyzer.result()
+                _precheck_result = _fut_precheck.result()
+                _dbg.line(f"  [CONV STATE] {_conv_state.summary_line()}")
             else:
+                # style_cmd literal sudah ada → router bakal di-skip total nanti,
+                # gak perlu fan-out precheck() (hemat 1 slot buat Analyzer aja).
                 _conv_state = _cs_analyze(
                     user_id    = user_mem.user_id,
                     user_input = user_input,
@@ -2188,13 +2342,53 @@ def full_generate(
                 _wm.save(_pa)
 
         if not _pending_executed:
-            # ── PASS 1: 3-Pass Task Router ──────────────────────────────────────
-            router_calls = _task_router_pass(
-                user_id    = user_mem.user_id,
-                username   = uname,
-                user_input = user_input,
-            )
-            _dbg.line(f"  [TASK ROUTER] → {len(router_calls)} call(s): {[c.get('f') for c in router_calls]}")
+            # ── PASS 1: Task Router — pakai hasil precheck() yang sudah
+            # dijalankan PARALEL dengan Analyzer di atas (lihat blok
+            # "Conversation State Analysis"). Kalau karena alasan tertentu
+            # precheck belum sempat jalan (mis. style_cmd berubah di tengah,
+            # exception, dsb), fallback ke jalur lama (sekuensial) supaya
+            # tetap aman.
+            if _precheck_result is not None:
+                if _precheck_result["done"]:
+                    router_calls = _precheck_result["calls"]
+                    _dbg.line(
+                        f"  [TASK ROUTER] (precheck paralel) → {len(router_calls)} "
+                        f"call(s): {[c.get('f') for c in router_calls]}"
+                    )
+                elif _conv_state is not None and _conv_state.need_tool is False:
+                    # PATCH: cross-check GRATIS — Analyzer & precheck (Gate1+DG)
+                    # sudah jalan PARALEL di atas, jadi dua-duanya sudah selesai
+                    # di titik ini tanpa biaya tambahan sama sekali. Kalau
+                    # Analyzer eksplisit bilang need_tool=False tapi Gate1/DG
+                    # tetap mau explore kategori (dua model kecil tidak setuju),
+                    # percaya Analyzer dan skip Pass B/C sepenuhnya — ini
+                    # menyaring kasus seperti "kabarmu hari ini apa?" yang
+                    # Gate1 salah klasifikasi sebagai type=task, padahal
+                    # Analyzer (yang baca frame+history lebih luas) sudah tahu
+                    # ini murni CHAT. Menghemat 3-5 LLM call Pass B/C yang
+                    # ujung-ujungnya SKIP semua juga (lihat log sebelumnya).
+                    router_calls = []
+                    _dbg.line(
+                        f"  [TASK ROUTER] ⚠️  skip Pass B/C — Analyzer bilang "
+                        f"need_tool=False tapi Gate1/DG mau explore "
+                        f"{_precheck_result.get('categories')} (disagreement, "
+                        f"percaya Analyzer — cross-check gratis, sudah resolve paralel)"
+                    )
+                else:
+                    router_calls = _tr_execute_categories(
+                        _precheck_result,
+                        user_mem.user_id, uname, user_input,
+                        CHARACTER.get("prompts", {}), _llm_call, dbg=_dbg,
+                    )
+                    _dbg.line(f"  [TASK ROUTER] → {len(router_calls)} call(s): {[c.get('f') for c in router_calls]}")
+            else:
+                router_calls = _task_router_pass(
+                    user_id    = user_mem.user_id,
+                    username   = uname,
+                    user_input = user_input,
+                    stall_callback = _fire_stall_once,
+                )
+                _dbg.line(f"  [TASK ROUTER] (fallback sekuensial) → {len(router_calls)} call(s): {[c.get('f') for c in router_calls]}")
 
             if router_calls:
                 # ── PASS 2: Execute hasil router ──────────────────────────────
@@ -2790,7 +2984,22 @@ def main():
                 continue
 
             print("Berpikir...", end="\r", flush=True)
-            responses, dominant = full_generate(raw, user_mem, username=username)
+
+            def _cli_stall_print(seg: Dict):
+                # PATCH: caller CLI ini sekarang benar-benar wire stall_callback
+                # ke full_generate() — sebelumnya parameter ini tidak pernah
+                # diisi sama sekali, jadi filler message selalu no-op meskipun
+                # task_router sudah trigger duluan (root cause laporan "gak
+                # kepanggil"). Cetak segera, jangan tunggu jawaban final.
+                print(f"\n[{_ACTIVE_CHAR_NAME}] (mohon tunggu...)")
+                print(f"  {seg.get('anim','neutral')}: {seg.get('ind','')}")
+                print(f"       JP: {seg.get('jp','')}")
+                print("Memproses...", end="\r", flush=True)
+
+            responses, dominant = full_generate(
+                raw, user_mem, username=username,
+                stall_callback=_cli_stall_print,
+            )
 
             print(f"\n[{_ACTIVE_CHAR_NAME}]")
             for i, r in enumerate(responses, 1):

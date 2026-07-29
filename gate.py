@@ -177,15 +177,19 @@ Contoh external: "berapa viewer", "cuaca jakarta", "top gifter", "ada event apa"
 _DG_L2_INTERNAL_SYS = """\
 Tentukan sub-kategori internal. Jawab HANYA satu kata.
 
-memory    = data user, memory, romance, nickname, riwayat chat
-character = kondisi karakter AI, mood, mode, sesi, command, waktu, jam, tanggal, jadwal
-cloud     = simpan/baca/hapus data di cloud/bin/storage
+memory = data USER: memory, romance, nickname, riwayat chat
+self   = identitas/kepribadian/mood/sesi KARAKTER AI (bukan soal waktu)
+meta   = waktu, jam, tanggal, jadwal, command aktif (bukan soal karakter)
+cloud  = simpan/baca/hapus data di cloud/bin/storage
 
 Contoh:
   "cek memory aku" → memory
-  "kamu lagi mood apa" → character
-  "jam berapa sekarang" → character
-  "tanggal hari ini" → character
+  "kamu lagi mood apa" → self
+  "kamu suka apa" → self
+  "kamu ulang tahun kapan" → self
+  "jam berapa sekarang" → meta
+  "tanggal hari ini" → meta
+  "info hari ini" → meta
   "simpan ke cloud" → cloud
 """
 
@@ -199,7 +203,8 @@ custom   = tool kustom admin (cuaca, musik, dll)
 
 _DG_FAMILY_MAP = {
     "memory":    ["user", "chat"],
-    "character": ["self", "meta"],
+    "self":      ["self"],
+    "meta":      ["meta"],
     "cloud":     ["cloud"],
     "live":      ["state", "event", "social"],
     "activity":  ["game"],
@@ -231,7 +236,7 @@ def decision_graph(text: str, llm_call, has_custom: bool = False, dbg=None) -> L
         l2_raw = _call(_DG_L2_INTERNAL_SYS)
         _log(f"  [DG L2-internal] raw={l2_raw!r}")
         family = "memory"
-        for f in ("memory", "character", "cloud"):
+        for f in ("memory", "self", "meta", "cloud"):
             if f in l2_raw:
                 family = f
                 break

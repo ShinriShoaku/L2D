@@ -382,12 +382,13 @@ class DesktopClient:
         self._user_mgr = UserMemoryManager(storage_dir=MEMORY_DIR, max_cache=10)
         self.user_mem  = self._user_mgr.get(user_id, user_name)
 
-    def chat(self, message: str) -> Tuple[List[Dict], str]:
+    def chat(self, message: str, stall_callback: Optional[Callable] = None) -> Tuple[List[Dict], str]:
         result = full_generate(
             message, self.user_mem,
             char_name = self.char_name,
             char_data = CHARACTER,
             username  = self.user_name,
+            stall_callback = stall_callback,
         )
         # PENTING: full_generate() bisa memutasi self.user_mem (nickname,
         # romance_points, info, dst lewat ReAct mutate()) tapi TIDAK pernah
@@ -471,6 +472,28 @@ def main():
 
     tts_enabled = True
     l2d_enabled = True
+
+    # ── PATCH: stall/filler message — mainkan via TTS+L2D yang SAMA seperti
+    # jawaban normal (reuse play_segments(), yang sudah jalan di thread
+    # sendiri + prefetch TTS). Dipanggil dari full_generate() (lewat
+    # task_router.py) dari BACKGROUND THREAD-nya sendiri — jadi closure ini
+    # HARUS aman dipanggil dari thread lain (bukan main thread input()).
+    # play_segments()/l2d/requests semuanya sudah thread-safe di file ini
+    # (lihat play_segments, prefetch_thread, dst), jadi aman.
+    def _live_stall_play(seg: Dict):
+        ind_txt = seg.get("ind", "")
+        if not ind_txt:
+            return
+        print(f"\n[{mgr.active}] (mohon tunggu...) {ind_txt}")
+        if l2d_enabled:
+            l2d.show_chat_log(f"{mgr.active}: {ind_txt}")
+        if tts_enabled and l2d_enabled:
+            # play_segments menerima List[Dict] — cukup kirim 1 segmen.
+            # Fungsi ini sudah self-threading (lihat def play_segments di
+            # atas), jadi tidak blocking closure ini ataupun caller-nya.
+            play_segments([seg], seg.get("anim", "neutral"), l2d)
+        elif l2d_enabled:
+            l2d.show_chat_bubble(ind_txt, 3000)
 
     while True:
         try:
@@ -571,7 +594,7 @@ def main():
                 l2d.show_chat_log(f"{user_name}: {raw}")
 
             print("💭 Berpikir...", end="\r")
-            responses, dominant = client.chat(raw)
+            responses, dominant = client.chat(raw, stall_callback=_live_stall_play)
 
             print(f"\n[{mgr.active}]")
             for i, r in enumerate(responses, 1):
