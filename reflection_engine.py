@@ -30,6 +30,29 @@ import knowledge_memory  as km_mod
 import long_memory       as lm_mod
 import character_memory  as cmem_mod  # PATCH: simpan fakta diri karakter yg diimprovisasi
 
+# PATCH: jaring pengaman KODE (bukan cuma instruksi prompt) — kalau model
+# reflect tetap kelewatan nyimpen data volatile (cuaca, waktu, dst) sebagai
+# "fakta permanen", filter ini nolak sebelum sempat ditulis ke knowledge
+# memory. Root cause bug nyata: pertanyaan "cuaca jakarta" dijawab pakai
+# data cuaca LAMA yang ke-simpen sebagai fakta dari sesi sebelumnya, padahal
+# tool cuaca-nya sendiri gagal terpanggil di turn itu — jawaban jadi
+# terlihat meyakinkan tapi berpotensi basi/salah.
+_VOLATILE_FACT_PATTERN = re.compile(
+    r"\b(cuaca|suhu|weather|temperature|celcius|celsius|°c|"
+    r"jam\s*(sekarang|berapa)?|waktu\s*(sekarang|saat ini)?|time\s*(now|current)?|current\s*time|"
+    r"tanggal\s*(hari ini|sekarang)?|\bdate\b|today.?s\s*date|"
+    r"viewer|penonton\s*(sekarang|saat ini)?|live\s*sekarang)\b",
+    re.I,
+)
+
+
+def _is_volatile_fact(key: str, value: str) -> bool:
+    # Normalisasi underscore -> spasi dulu — key seperti "cuaca_jakarta" atau
+    # "jam_sekarang" TIDAK ke-match \b...\b tanpa ini (underscore dianggap
+    # word-character oleh regex, jadi tidak ada word-boundary di antaranya).
+    text = f"{key} {value}".replace("_", " ")
+    return bool(_VOLATILE_FACT_PATTERN.search(text))
+
 # ── Prompt ────────────────────────────────────────────────────────────────────
 _REFLECT_SYS = """\
 Analisa percakapan ini dan ekstrak informasi yang perlu disimpan.
@@ -47,7 +70,14 @@ Format:
 }
 
 Aturan:
-- new_facts: hanya fakta konkret yang USER nyatakan (OS, GPU, framework, suka/tidak suka)
+- new_facts: HANYA fakta yang STABIL/tidak berubah dari waktu ke waktu (OS,
+  GPU, framework, suka/tidak suka permanen, pekerjaan, dst). JANGAN catat
+  data VOLATILE yang berubah-ubah — cuaca, suhu, jam/waktu saat ini,
+  tanggal hari ini, jumlah viewer/penonton saat ini, atau data live lain.
+  Data volatile itu SUDAH ditangani tool khusus tiap kali dibutuhkan
+  (selalu fresh) — kalau ikut disimpan sebagai "fakta" di sini, nanti
+  kepakai lagi di sesi berikutnya padahal sudah basi (mis. cuaca kemarin
+  kepakai buat jawab pertanyaan cuaca hari ini).
 - new_lessons: hal yang AI harus ingat ("jangan panggil user bos", "user suka jawaban singkat")
 - relationship_update: perubahan trust/romance dari sesi ini. 0 jika tidak ada perubahan
 - experience: isi jika ada kejadian signifikan. title kosong jika tidak ada
@@ -110,8 +140,13 @@ def _dispatch_reflection(
         key  = str(fact.get("key",""))
         val  = str(fact.get("value",""))
         conf = float(fact.get("confidence", 0.6))
-        if key and val:
-            km_mod.add_fact(user_id, cat, key, val, conf)
+        if not key or not val:
+            continue
+        if _is_volatile_fact(key, val):
+            # PATCH: skip — data volatile (cuaca/waktu/dst) tidak boleh
+            # kepersist sebagai "fakta" permanen, lihat catatan di atas.
+            continue
+        km_mod.add_fact(user_id, cat, key, val, conf)
 
     # ── Relationship Memory ───────────────────────────────────────────────────
     ru  = result.get("relationship_update", {})

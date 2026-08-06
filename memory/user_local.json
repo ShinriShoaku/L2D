@@ -4,9 +4,26 @@
   "info_user": [],
   "romance_status": "",
   "romance_points": 0,
-  "note": [],
+  "note": [
+    {
+      "text": "yang tidak disukai liana apa saja",
+      "ts": "2026-07-30T06:26:39.303479+00:00"
+    },
+    {
+      "text": "yang tidak disukai liana apa saja? biar tar aku simpan di note",
+      "ts": "2026-07-30T06:26:41.159421+00:00"
+    },
+    {
+      "text": "yang tidak disukai liana apa saja?",
+      "ts": "2026-07-30T06:26:42.692311+00:00"
+    },
+    {
+      "text": "yang tidak disukai liana apa saja? tar aku simpan di note",
+      "ts": "2026-07-30T06:26:44.365514+00:00"
+    }
+  ],
   "gift_history": [],
   "vip_user": false,
-  "last_chat_timestamp": "Rabu, 29 Juli 2026, 11:44 AM",
-  "_last_chat_iso": "2026-07-29T11:44:02.768609+00:00"
+  "last_chat_timestamp": "Kamis, 6 Agustus 2026, 10:54 AM",
+  "_last_chat_iso": "2026-08-06T10:54:35.195364+00:00"
 }

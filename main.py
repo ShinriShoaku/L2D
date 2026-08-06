@@ -16,6 +16,7 @@ import os
 import random
 import re
 import time
+from collections import OrderedDict
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 import character_memory
@@ -39,7 +40,7 @@ from mcp_tools import (
 )
 from task_router import run_task_router, precheck as _tr_precheck, execute_categories as _tr_execute_categories
 from concurrency import get_executor as _get_pool
-from tool_compiler import boot_check as _tool_compiler_boot
+from tool_compiler import compile_tools, load_compiled_tools, get_alias_map
 from settings_ui import open_settings, open_settings_async
 
 # ─── Memory System (new architecture) ────────────────────────────────────────
@@ -1004,14 +1005,34 @@ def _soul_persona_lock(tone: str, cmd: str) -> Dict:
 
 _CMD_DIR_FALLBACK = {"address": "", "style_note": "", "sticky_suffix": ""}
 
+# PATCH: cache exact-match untuk _cmd_interpret. cmd_active (mis. "bilang
+# nyann 10x", "jawab dalam bahasa indonesia") biasanya SAMA PERSIS di banyak
+# turn berturut-turut — user jarang ganti gaya bicara tiap chat — dan call
+# ini temperature=0.0 (deterministic), jadi aman di-cache murni by exact
+# string match. Hemat 1 LLM call di HAMPIR SETIAP turn selama cmd_active
+# belum berubah. Dibatasi ukurannya (LRU sederhana via OrderedDict) supaya
+# tidak numpuk tanpa batas kalau ternyata banyak variasi cmd.
+_CMD_INTERPRET_CACHE: "OrderedDict[str, Dict]" = OrderedDict()
+_CMD_INTERPRET_CACHE_MAX = 100
+
+
 def _cmd_interpret(cmd: str) -> Dict:
     """
     Pass A: terjemahkan instruksi gaya bicara mentah (mm.command) jadi
-    {"address", "style_note", "sticky_suffix"}. Skip LLM call kalau cmd kosong.
+    {"address", "style_note", "sticky_suffix"}. Skip LLM call kalau cmd kosong
+    ATAU kalau cmd yang sama persis sudah pernah di-interpret sebelumnya.
     """
     cmd = (cmd or "").strip()
     if not cmd:
         return dict(_CMD_DIR_FALLBACK)
+
+    if cmd in _CMD_INTERPRET_CACHE:
+        cached = _CMD_INTERPRET_CACHE[cmd]
+        _CMD_INTERPRET_CACHE.move_to_end(cmd)
+        _dbg.log_step(5, "CMD INTERPRET (cache hit)", f"cmd={cmd!r}")
+        _dbg.line(f"  [CMD DIR] (cache) {cached}")
+        return dict(cached)
+
     _dbg.log_step(5, "CMD INTERPRET", f"cmd={cmd!r}")
     try:
         resp = _llm_call(
@@ -1033,6 +1054,9 @@ def _cmd_interpret(cmd: str) -> Dict:
                 "sticky_suffix": str(data.get("sticky_suffix", "")),
             }
             _dbg.line(f"  [CMD DIR] {result}")
+            _CMD_INTERPRET_CACHE[cmd] = dict(result)
+            if len(_CMD_INTERPRET_CACHE) > _CMD_INTERPRET_CACHE_MAX:
+                _CMD_INTERPRET_CACHE.popitem(last=False)
             return result
     except Exception as e:
         _dbg.log_error("_cmd_interpret", e)
@@ -1040,6 +1064,17 @@ def _cmd_interpret(cmd: str) -> Dict:
 
 
 # ── Pass B: Identity + Context Merge — gabung Identity/Relation/CONTEXT/CMD ──
+
+# PATCH: cache exact-match untuk _identity_context_merge, keyed by
+# (username, relation, cmd_dir, data_summary). Kalau semua 4 input ini
+# SAMA PERSIS dengan turn sebelumnya (sangat umum di turn tanpa tool data —
+# lihat "data_summary: (none)" yang sering berulang), hasil directive-nya
+# pasti sama juga (temperature=0.0) — skip LLM call. Begitu salah satu
+# berubah (mis. ada data_summary baru dari tool), otomatis re-compute,
+# TIDAK ada data basi yang kepakai.
+_IDENTITY_MERGE_CACHE: "OrderedDict[tuple, Dict]" = OrderedDict()
+_IDENTITY_MERGE_CACHE_MAX = 200
+
 
 def _identity_context_merge(
     username:     str,
@@ -1050,7 +1085,21 @@ def _identity_context_merge(
     """
     Pass B: gabungkan Target_User, Relation, cmd_directive, dan CONTEXT data
     jadi satu directive ringkas: {"address_user_as", "persona_note", "must_use_data"}.
+    Cache exact-match kalau kombinasi (username, relation, cmd_dir, data_summary)
+    sudah pernah diproses sebelumnya.
     """
+    cache_key = (
+        username, relation,
+        json.dumps(cmd_dir, sort_keys=True, ensure_ascii=False),
+        data_summary or "",
+    )
+    if cache_key in _IDENTITY_MERGE_CACHE:
+        cached = _IDENTITY_MERGE_CACHE[cache_key]
+        _IDENTITY_MERGE_CACHE.move_to_end(cache_key)
+        _dbg.log_step(6, "IDENTITY+CONTEXT MERGE (cache hit)", f"user={username} relation={relation}")
+        _dbg.line(f"  [DIRECTIVE] (cache) {cached}")
+        return dict(cached)
+
     payload = (
         f"Target_User: {username}\n"
         f"Relation: {relation}\n"
@@ -1078,6 +1127,9 @@ def _identity_context_merge(
                 "must_use_data":   str(data.get("must_use_data", "")),
             }
             _dbg.line(f"  [DIRECTIVE] {result}")
+            _IDENTITY_MERGE_CACHE[cache_key] = dict(result)
+            if len(_IDENTITY_MERGE_CACHE) > _IDENTITY_MERGE_CACHE_MAX:
+                _IDENTITY_MERGE_CACHE.popitem(last=False)
             return result
     except Exception as e:
         _dbg.log_error("_identity_context_merge", e)

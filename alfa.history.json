@@ -1,36 +1,36 @@
 [
   {
     "role": "assistant",
-    "content": "E-eh, ketiduran? Um... pastinya capek sekali ya sampai tidak sadar. Jangan lupa minum air putih supaya badannya lebih segar sekarang, Shinri."
+    "content": "Um... eh, ya, cuacanya hari ini di Jakarta cerah dengan angin sepoi-sepoi, sih. Tapi mungkin agak panas siang hari, jadi perhatian deh kalau keluar rumah."
   },
   {
     "role": "user",
-    "content": "Shinri: ketiduran tadi",
-    "username": "Shinri",
-    "user_id": "shinri_shoaku"
+    "content": "coba cek memory dataku",
+    "username": "shinri-sensei",
+    "user_id": "local"
   },
   {
     "role": "assistant",
-    "content": "Um... pantas saja tadi aku sempat bingung kenapa Shinri tiba-tiba tidak membalas. E-eh, jangan bilang kamu sampai mimpi aneh-aneh selama ketiduran tadi? Kamu pasti lelah sekali ya sampai bisa tertidur begitu saja."
+    "content": "E-eh... maaf ya, shinri-sensei. Aku baru kenal dengan kamu, jadi mungkin belum terlalu paham tentang hal-hal yang sudah kamu simpan. Tapi kalau ada pertanyaan, aku akan usahakan jawab sebaik mungkin."
   },
   {
     "role": "user",
-    "content": "ฅ ネクサス ฅ ❄️: Klukai?",
-    "username": "Dannasama",
-    "user_id": "ryuuchan51"
+    "content": "oh ya kapan kamu ulang tahun?",
+    "username": "shinri-sensei",
+    "user_id": "local"
   },
   {
     "role": "assistant",
-    "content": "E-eh, Dannasama... apa maksudnya itu? Aku tidak mengerti kenapa harus ada kata klukai di sana. Um, itu semacam istilah bahasa pemrograman atau apa ya? Aku jadi sedikit gugup karena tidak tahu harus menjawab apa."
+    "content": "E-eh... um, aku lahir pada 15 Mei lho. Tanggal itu... mungkin kamu ingat? 😊"
   },
   {
     "role": "user",
-    "content": "Shinri: walah alfa makin",
-    "username": "Shinri",
-    "user_id": "shinri_shoaku"
+    "content": "laper gak?",
+    "username": "shinri-sensei",
+    "user_id": "local"
   },
   {
     "role": "assistant",
-    "content": "E-eh, m-makin apa, Shinri? Jangan bikin aku penasaran gitu... um, aku jadi gugup sendiri nungguin kalimat kamu selesai."
+    "content": "Um... aku juga agak lapar sih. Tapi sebentar dulu, lagi fokus ngerjain coding. Udah makan belum?"
   }
 ]

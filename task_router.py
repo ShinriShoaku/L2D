@@ -513,6 +513,108 @@ def _parse_pass_c(raw: str) -> bool:
 # MAIN ENTRY POINT
 # ═════════════════════════════════════════════════════════════════════════════
 
+def _estimate_confidence(
+    fname: str,
+    cat: str,
+    user_input: str,
+    compiled_meta: Dict,
+    has_prior_rejection: bool = False,
+) -> int:
+    """
+    PATCH: perkiraan confidence Pass B TANPA perlu ubah prompt/format output
+    Pass B (jadi tidak mengganggu jalur yang sudah jalan).
+
+    Baseline TURUN kalau pilihan sebelumnya di kategori ini SUDAH pernah
+    ditolak Pass C (has_prior_rejection) — itu sinyal paling jujur bahwa
+    kasus ini genuinely ambigu ("pusing"), bukan cuma confidence statis di
+    attempt pertama (percobaan pertama awalnya base_conf tinggi supaya tetap
+    baseline "execute"/"validate" seperti perilaku lama utk kasus normal;
+    baseline RENDAH baru dipakai SETELAH ada penolakan, supaya tier 'skip'
+    — yang men-trigger thinking mode — benar-benar bisa kesentuh, bukan
+    cuma teori di atas kertas).
+
+    Bonus tambahan dari 2 sumber sinyal keyword:
+      1. gate.compute_confidence() — regex per KATEGORI built-in.
+      2. trigger_phrases tool yang dipilih (kalau fname itu compiled/custom
+         tool) — lebih presisi per-tool daripada per-kategori.
+    """
+    from gate import compute_confidence
+    base_conf = 60 if has_prior_rejection else 85
+    conf = compute_confidence(fname, cat, base_conf, user_input)
+
+    meta = (compiled_meta or {}).get(fname)
+    if meta:
+        phrases = meta.get("trigger_phrases") or []
+        text = user_input.lower()
+        if any(p and str(p).lower() in text for p in phrases):
+            conf = min(100, conf + 15)
+
+    return conf
+
+
+_THINK_SYS_SUFFIX = """
+
+[THINK+PILIH ULANG]
+Pilihan sebelumnya kurang meyakinkan. Pikirkan LEBIH TELITI sebelum putuskan:
+1. Apa sebenarnya yang user butuhkan dari chat ini?
+2. Dari daftar fungsi di atas, mana yang PALING pas? Atau memang tidak ada
+   yang cocok sama sekali?
+Output HANYA JSON satu baris: {"reasoning":"<max 15 kata>","f":"nama_fungsi_atau_null","a":{}}
+Kalau memang tidak ada yang cocok, f harus null.
+"""
+
+
+def _pass_b_think(
+    cat:            str,
+    user_input:     str,
+    prev_fname:     str,
+    valid_funcs:    set,
+    rejected_funcs: List[str],
+    prompt_b:       str,
+    llm_call,
+    dbg=None,
+) -> Optional[Dict]:
+    """
+    "Thinking mode" — dipanggil HANYA saat confidence Pass B rendah (tier
+    'skip'). Beda dari retry Pass B biasa: prompt-nya membawa instruksi
+    reasoning eksplisit (mempertimbangkan ulang pilihan sebelumnya + alasan),
+    bukan cuma "coba lagi" tanpa konteks kenapa attempt sebelumnya lemah.
+    Token budget lebih besar dari Pass B normal supaya ada ruang buat
+    reasoning singkat sebelum keputusan akhir.
+    Return {"f":..,"a":..} atau None kalau setelah dipikir ulang tetap
+    tidak ada yang cocok.
+    """
+    def _log(msg: str):
+        if dbg:
+            dbg.line(msg)
+
+    input_think = (
+        f"username/chat: {user_input}\n"
+        f"Pilihan sebelumnya (confidence rendah): {prev_fname}\n"
+        f"Sudah ditolak validator: {rejected_funcs}\n"
+        f"Fungsi valid utk kategori '{cat}': {sorted(valid_funcs)}"
+    )
+    try:
+        resp = llm_call(
+            "react",
+            messages=[
+                {"role": "system", "content": prompt_b + _THINK_SYS_SUFFIX},
+                {"role": "user",   "content": input_think},
+            ],
+            temperature=0.0,
+            max_tokens=100,
+        )
+        raw = (resp.choices[0].message.content or "").strip()
+        _log(f"  [THINK RAW] {raw!r}")
+        data = _parse_json_tolerant(raw)
+        if not data or not data.get("f") or str(data["f"]).strip().lower() == "null":
+            return None
+        return {"f": str(data["f"]).strip(), "a": dict(data.get("a", {}) or {})}
+    except Exception as e:
+        _log(f"  [THINK ERROR] {e}")
+        return None
+
+
 def _run_pass_bc_for_category(
     cat:            str,
     user_id:        str,
@@ -600,14 +702,64 @@ def _run_pass_bc_for_category(
         _log(f"  │   parsed → {parsed}")
 
         if parsed is None:
-            _log(f"  └── PASS B: null/invalid output — stop retry untuk '{cat}'")
-            break
+            # PATCH: dulu langsung `break` (nyerah total) begitu output null,
+            # walau max_retry masih ada budget. Itu bug — model kecil kadang
+            # cuma "hiccup" 1x, retry berikutnya sering berhasil (lihat kasus
+            # "cuaca jakarta" yang null di attempt 1 tapi tool-nya jelas ada).
+            # Sekarang retry seperti Pass C reject, tetap dibatasi max_retry.
+            _log(f"  └── PASS B: null/invalid output → retry (masih ada budget)")
+            attempt += 1
+            continue
 
         fname = parsed["f"]
 
         if fname in already_funcs:
             _log(f"  [PASS B] {fname} sudah ada di hasil, skip")
             break
+
+        # ── PATCH: confidence voting — "thinking mode" utk kasus ambigu ────
+        # compute_confidence()/route_by_confidence() sudah ada di gate.py
+        # dari awal tapi belum pernah dipakai di manapun. Sekarang disambung:
+        #   - confidence TINGGI (>=95): tool ini jelas banget cocok (model
+        #     pilih + regex/trigger_phrase juga match) → skip Pass C,
+        #     langsung terima. Lebih cepat utk kasus yang sudah jelas.
+        #   - confidence SEDANG (75-94): jalur normal, tetap lewat Pass C
+        #     seperti biasa (yes/no cepat).
+        #   - confidence RENDAH (<75): BARU di sini masuk "thinking mode" —
+        #     bukan retry buta, tapi 1 langkah reasoning eksplisit yang
+        #     mempertimbangkan ulang pilihan sebelumnya sebelum diputuskan.
+        #     Jadi biaya ekstra HANYA muncul di kasus yang beneran ambigu,
+        #     bukan di semua request.
+        from gate import compute_confidence, route_by_confidence
+        conf = _estimate_confidence(
+            fname, cat, user_input, compiled_meta,
+            has_prior_rejection=bool(rejected_funcs),
+        )
+        tier = route_by_confidence(conf)
+        _log(f"  │   confidence={conf} → tier={tier}")
+
+        if tier == "execute":
+            _log(f"  ⚡ confidence tinggi → skip Pass C, langsung terima f={fname}")
+            call = parsed
+            break
+
+        if tier == "skip":
+            _log(f"  🧠 confidence rendah → thinking mode (reasoning ulang)")
+            thought = _pass_b_think(
+                cat, user_input, fname, valid_funcs, rejected_funcs,
+                prompt_b, llm_call, dbg,
+            )
+            if thought is None:
+                _log(f"  └── THINK: tidak ada yang cocok setelah dipikir ulang → retry")
+                rejected_funcs.append(fname)
+                attempt += 1
+                continue
+            parsed = thought
+            fname  = parsed["f"]
+            _log(f"  │   THINK hasil baru: f={fname} a={parsed.get('a',{})}")
+            # lanjut ke Pass C normal di bawah dgn pilihan hasil thinking —
+            # tetap divalidasi, thinking mode menambah akurasi, bukan
+            # menggantikan validasi akhir.
 
         _log(f"  │   akan validate: f={fname} a={parsed.get('a',{})}")
         _log(f"  ├── PASS C: VALIDATE f={fname}")
