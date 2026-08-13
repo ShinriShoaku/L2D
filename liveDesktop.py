@@ -39,7 +39,7 @@ _main.DEBUG = False
 # ─── TTS CONFIG ───────────────────────────────────────────────────────────────
 
 TTS_SERVER_URL = "http://localhost:7861/api/tts_fast"
-TTS_MODEL      = "kokoro"
+TTS_MODEL      = "koharu"
 TTS_PARAMS     = {
     "language":      "Japanese",
     "noise_scale":   0.6,
@@ -364,6 +364,114 @@ def _play_seq_safe(
 
 # ─── DESKTOP CLIENT ───────────────────────────────────────────────────────────
 
+def play_segments_streaming(
+    seg_queue:   "queue.Queue",
+    expression:  str,
+    l2d:         Live2DClient,
+    on_complete: Optional[Callable] = None,
+):
+    """
+    PATCH: player streaming — konsumsi segmen SATU-SATU dari `seg_queue`
+    begitu tersedia, TIDAK butuh list lengkap di awal seperti play_segments().
+
+    Beda dari play_segments(): dipakai bareng segment_callback dari
+    full_generate() — begitu 1 kalimat selesai diterjemahkan, langsung
+    push() ke seg_queue oleh THREAD LAIN (translate masih jalan di sana),
+    sementara fungsi ini (thread player) sudah mulai fetch TTS + main
+    segmen yang sudah masuk. 2 thread paralel:
+      Thread 1 (translate, di full_generate) : terus nerjemahkan kalimat
+                                                 berikutnya & push ke queue
+      Thread 2 (player, fungsi ini)          : fetch TTS + play segmen yang
+                                                 sudah ada
+
+    Prefetch segmen berikutnya dilakukan lewat thread "waiter" terpisah yang
+    NUNGGU (blocking) di queue SELAMA segmen sekarang masih diputar — begitu
+    segmen berikutnya tiba (kapan pun itu, walau di tengah-tengah playback),
+    langsung mulai fetch TTS-nya saat itu juga. Ini beda dari sekadar "cek
+    sekali di awal lalu nyerah" — peek satu kali saja gampang kelewat momen
+    kalau translate kalimat berikutnya baru selesai PAS sedang muter audio
+    (kasus umum, karena translate 1 kalimat biasanya lebih cepat dari durasi
+    audio 1 kalimat).
+    Selesai ketika menerima sentinel None dari queue.
+    """
+    def _play_one(seg: Dict, audio: Optional[str]):
+        ind_txt  = seg.get("ind", "")
+        jp_txt   = seg.get("jp", "")
+        seg_anim = seg.get("anim", expression)
+
+        print(f"🎤 [TTS-STREAM] ({seg_anim}): {jp_txt[:40]}...")
+        l2d.set_expression(seg_anim)
+
+        if not audio or not os.path.exists(audio):
+            print(f"❌ [TTS-STREAM] Gagal: {jp_txt[:30]}")
+            l2d.show_chat_bubble(ind_txt, 3000)
+            l2d.send_random_motions(L2D_MODEL_ID, "response")
+            time.sleep(0.5)
+            return
+
+        analysis    = WavVoiceDetector.analyze(audio, jp_txt)
+        mapped      = analysis.get("mappedOutput", "")
+        duration_ms = analysis.get("wavDurationMs", 0)
+
+        if mapped and duration_ms > 0:
+            l2d.start_lipsync(L2D_MODEL_ID, L2D_MODEL_MAP, mapped, duration_ms)
+            l2d.show_chat_bubble(ind_txt, duration_ms)
+        else:
+            l2d.show_chat_bubble(ind_txt, 3000)
+        l2d.send_random_motions(L2D_MODEL_ID, "response")
+
+        done_evt = threading.Event()
+        play_audio(audio, on_finish_callback=done_evt.set)
+        done_evt.wait(timeout=60)
+        time.sleep(0.2)
+        try:
+            if audio != AUDIO_PATH:
+                os.remove(audio)
+        except Exception:
+            pass
+
+    def _worker():
+        l2d.set_expression(expression)
+        try:
+            seg = seg_queue.get(timeout=45)
+        except Exception:
+            seg = None
+        if seg is None:
+            if on_complete:
+                on_complete()
+            return
+        audio = _tts_to_tempfile(seg.get("jp", ""))
+
+        while seg is not None:
+            # Waiter thread: blocking-nunggu segmen berikutnya SELAMA segmen
+            # sekarang diputar, DAN begitu tiba, langsung fetch TTS-nya juga
+            # — jadi 2 hal ini (nunggu translate + fetch audio) sama-sama
+            # numpang di jendela waktu playback segmen sekarang, bukan
+            # menambah waktu tunggu baru setelahnya.
+            next_holder: Dict = {}
+            def _wait_and_prefetch(h=next_holder):
+                try:
+                    nxt = seg_queue.get()
+                except Exception:
+                    nxt = None
+                h["seg"] = nxt
+                if nxt is not None:
+                    h["audio"] = _tts_to_tempfile(nxt.get("jp", ""))
+            waiter = threading.Thread(target=_wait_and_prefetch, daemon=True, name="stream-wait-prefetch")
+            waiter.start()
+
+            _play_one(seg, audio)
+
+            waiter.join(timeout=60)
+            seg   = next_holder.get("seg")
+            audio = next_holder.get("audio")
+
+        if on_complete:
+            on_complete()
+
+    threading.Thread(target=_worker, daemon=True, name="play-seq-stream").start()
+
+
 class DesktopClient:
     """Standalone client untuk testing / dev tanpa TikTok live."""
 
@@ -382,13 +490,19 @@ class DesktopClient:
         self._user_mgr = UserMemoryManager(storage_dir=MEMORY_DIR, max_cache=10)
         self.user_mem  = self._user_mgr.get(user_id, user_name)
 
-    def chat(self, message: str, stall_callback: Optional[Callable] = None) -> Tuple[List[Dict], str]:
+    def chat(
+        self,
+        message: str,
+        stall_callback: Optional[Callable] = None,
+        segment_callback: Optional[Callable] = None,
+    ) -> Tuple[List[Dict], str]:
         result = full_generate(
             message, self.user_mem,
             char_name = self.char_name,
             char_data = CHARACTER,
             username  = self.user_name,
-            stall_callback = stall_callback,
+            stall_callback    = stall_callback,
+            segment_callback  = segment_callback,
         )
         # PENTING: full_generate() bisa memutasi self.user_mem (nickname,
         # romance_points, info, dst lewat ReAct mutate()) tapi TIDAK pernah
@@ -594,7 +708,30 @@ def main():
                 l2d.show_chat_log(f"{user_name}: {raw}")
 
             print("💭 Berpikir...", end="\r")
-            responses, dominant = client.chat(raw, stall_callback=_live_stall_play)
+
+            # ── PATCT: streaming — mulai TTS+play SEGERA begitu kalimat
+            # pertama selesai diterjemahkan, TANPA nunggu semua kalimat
+            # selesai ditranslate dulu. 2 thread paralel: full_generate()
+            # (translate, thread ini) terus jalan nerjemahkan kalimat
+            # berikutnya, SEMENTARA play_segments_streaming (thread
+            # terpisah) sudah mulai fetch TTS + main kalimat yang sudah ada.
+            _stream_done = threading.Event()
+            _on_seg_stream = None
+            if tts_enabled and l2d_enabled:
+                _stream_q = queue.Queue()
+                play_segments_streaming(_stream_q, "neutral", l2d, on_complete=_stream_done.set)
+                def _on_seg_stream(seg, total=None, _q=_stream_q):
+                    _q.put(seg)
+            else:
+                _stream_q = None
+
+            responses, dominant = client.chat(
+                raw, stall_callback=_live_stall_play,
+                segment_callback=_on_seg_stream,
+            )
+
+            if _stream_q is not None:
+                _stream_q.put(None)  # sentinel — translate sudah selesai semua
 
             print(f"\n[{mgr.active}]")
             for i, r in enumerate(responses, 1):
@@ -608,7 +745,11 @@ def main():
                   f"({client.user_mem.get_romance_level()}) "
                   f"status={client.user_mem.get_romance_status() or '-'}")
 
-            if tts_enabled and l2d_enabled:
+            if _stream_q is not None:
+                _stream_done.wait(timeout=180)
+            elif tts_enabled and l2d_enabled:
+                # tts/l2d baru dinyalakan DI TENGAH turn ini (race jarang) —
+                # fallback ke pemutaran batch lama, tetap aman.
                 play_segments(responses, dominant, l2d)
 
         except KeyboardInterrupt:

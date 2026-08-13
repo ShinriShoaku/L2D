@@ -40,7 +40,7 @@ from mcp_tools import (
 )
 from task_router import run_task_router, precheck as _tr_precheck, execute_categories as _tr_execute_categories
 from concurrency import get_executor as _get_pool
-from tool_compiler import compile_tools, load_compiled_tools, get_alias_map
+from tool_compiler import boot_check as _tool_compiler_boot
 from settings_ui import open_settings, open_settings_async
 
 # ─── Memory System (new architecture) ────────────────────────────────────────
@@ -583,11 +583,14 @@ def _task_router_pass(
     return calls
 
 
-def _set_pending_action_wm(user_id: str, tool: str, args: dict, description: str = ""):
+def _set_pending_action_wm(user_id: str, tool: str, args: dict, description: str = "", char_id: str = None):
     """
     Simpan pending_action ke working memory + conversation_state.
     Dipanggil saat Soul mau tanya konfirmasi ke user sebelum execute tool.
     Turn berikutnya, CONFIRMATION handler di full_generate akan execute-nya.
+
+    char_id: PATCH — WAJIB scoped ke karakter aktif (lihat working_memory.py),
+        default ke _ACTIVE_CHAR_NAME kalau tidak diisi eksplisit.
 
     Contoh:
         _set_pending_action_wm(uid, "cs_write",
@@ -596,10 +599,11 @@ def _set_pending_action_wm(user_id: str, tool: str, args: dict, description: str
     """
     if not _MEMORY_SYSTEM_AVAILABLE:
         return
+    char_id = char_id or CHARACTER.get("id") or _ACTIVE_CHAR_NAME or "default"
     try:
         from conversation_state import set_pending_action as _spa
         _spa(user_id, tool, args, description)
-        wm = _wm.load(user_id)
+        wm = _wm.load(user_id, char_id)
         wm.set("__pending_tool__", tool)
         wm.set("__pending_args__", args)
         wm.awaiting_reply = description or f"konfirmasi: {tool}"
@@ -1595,16 +1599,28 @@ _VALIDATE_PATTERNS = [
     (_re.compile(r"\|"),                    "pipe"),
 ]
 
+_OOC_PHRASES = ("sebagai ai", "sebagai asisten", "saya adalah")
+
 def _soul_validate(soul_text: str, char_name: str) -> Dict:
     """
-    Pass 8: validasi output soul — regex dulu, LLM hanya jika ragu.
+    Pass 8: validasi output soul — MURNI regex/rule-based, TIDAK ADA LLM
+    call sama sekali.
+
+    PATCH: dulu ada cabang LLM ("soul_validate" pass, prompt
+    soul_validate_system) yang dipanggil kalau teks kelihatan "suspicious"
+    (nyebut "sebagai AI"/"sebagai asisten"/dst) — tujuannya nangkep OOC/nama
+    salah yang regex gak bisa cek. Tapi deteksi "suspicious"-nya SENDIRI
+    sudah cukup jadi sinyal OOC yang valid (substring match, bukan
+    ambigu) — jadi kirim ke model lagi buat "konfirmasi ulang" itu langkah
+    ekstra yang gak perlu. Sekarang begitu salah satu frasa itu ketemu,
+    langsung ditandai issue 'ooc' tanpa validasi model tambahan.
     Returns: {"ok": bool, "issues": [str]}
     """
     _dbg.log_step(8, "SOUL VALIDATE", f"len={len(soul_text)} chars")
     _dbg.line(f"  [SOUL PREVIEW] {soul_text[:100]}")
     issues: List[str] = []
 
-    # Cek regex cepat
+    # Cek regex (asterisk/markdown/pipe)
     for pattern, label in _VALIDATE_PATTERNS:
         if pattern.search(soul_text):
             issues.append(label)
@@ -1612,38 +1628,12 @@ def _soul_validate(soul_text: str, char_name: str) -> Dict:
     if not soul_text or len(soul_text.strip()) < 10:
         issues.append("too_short")
 
-    # Kalau ada masalah jelas dari regex → langsung return, tidak perlu LLM
-    if issues:
-        _dbg.line(f"  [VALIDATE] issues (regex): {issues}")
-        return {"ok": False, "issues": issues}
-
-    # Cek tambahan via LLM hanya kalau tidak ada issue jelas
-    # (hemat: hanya jika teks terlihat aneh — ada OOC/nama salah yang tidak bisa dicek regex)
-    suspicious = (
-        "sebagai AI" in soul_text.lower()
-        or "sebagai asisten" in soul_text.lower()
-        or "saya adalah" in soul_text.lower()
-    )
-    if suspicious:
-        try:
-            resp = _llm_call(
-                "soul_validate",
-                messages=[
-                    {"role": "system", "content": _get_prompt("soul_validate_system")},
-                    {"role": "user",   "content": soul_text},
-                ],
-                temperature=0.0,
-                max_tokens=60,
-            )
-            raw = (resp.choices[0].message.content or "").strip()
-            data = safe_parse(raw)
-            if data:
-                llm_issues = data.get("issues", [])
-                if llm_issues:
-                    issues.extend(llm_issues)
-                    _dbg.line(f"  [VALIDATE] issues (LLM): {llm_issues}")
-        except Exception as e:
-            _dbg.log_error("_soul_validate", e)
+    # Cek OOC via substring — dulu cuma jadi trigger buat LLM call, sekarang
+    # langsung jadi issue final (tidak perlu model buat mengonfirmasi ulang
+    # sesuatu yang sudah jelas dari kata-katanya sendiri).
+    text_lower = soul_text.lower()
+    if any(p in text_lower for p in _OOC_PHRASES):
+        issues.append("ooc")
 
     ok = len(issues) == 0
     _dbg.line(f"  [VALIDATE] ok={ok} issues={issues}")
@@ -2184,6 +2174,12 @@ def full_generate(
     t_start    = time.monotonic()
     char       = char_data or CHARACTER or {}
     char_name  = char_name or _ACTIVE_CHAR_NAME
+    # PATCH: char_id dihitung SEKALI di awal (dulu baru dihitung jauh di
+    # bawah, ~STEP 6) — root cause bug "working memory karakter lama masih
+    # kebawa pas ganti karakter": CONFIRMATION handler & beberapa titik lain
+    # di atas situ manggil working_memory TANPA char_id sama sekali (belum
+    # ada variabelnya), jadi keynya cuma user_id → data karakter lain nyampur.
+    char_id    = char.get("id") or char_name or "default"
     animations = char.get("animations", ["shy", "neutral", "happy", "blush", "panicked", "focused", "shock"])
 
     # ── PATCH v2: stall/filler message — generate ke model lokal ─────────────
@@ -2370,7 +2366,7 @@ def full_generate(
             # → kita simpan pending di _conv_state.pending_action sebelum analyze clear-nya
             # Lihat: conversation_state.analyze() menyimpan last_pending sebelum clear
             # Tapi kita perlu cara lain: cek working_memory untuk pending_action hint
-            _pa = _wm.load(user_mem.user_id)
+            _pa = _wm.load(user_mem.user_id, char_id)
             _pa_tool = _pa.get("__pending_tool__")
             _pa_args = _pa.get("__pending_args__")
             if _pa_tool and _pa_args is not None:
@@ -2493,7 +2489,7 @@ def full_generate(
             try:
                 _rc = locals().get("router_calls", [])
                 if _rc:
-                    _wm.update(user_mem.user_id,
+                    _wm.update(user_mem.user_id, char_id,
                                last_tool=_rc[0].get("f",""),
                                last_action="tool_execute")
             except Exception:

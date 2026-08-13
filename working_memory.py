@@ -15,7 +15,7 @@ Format persist: state/working_memory.bin — per user_id.
 Di-clear otomatis setelah sesi selesai (opsional, bisa juga dibiarkan persist).
 """
 from __future__ import annotations
-import os, struct, time
+import os, re, struct, time
 from dataclasses import dataclass, field, asdict
 from typing import Any, Dict, List, Optional
 
@@ -34,13 +34,29 @@ _H_FMT  = ">4sI";  _H_SZ  = struct.calcsize(_H_FMT)
 _IX_FMT = ">Q";    _IX_SZ = struct.calcsize(_IX_FMT)
 _L_FMT  = ">I";    _L_SZ  = struct.calcsize(_L_FMT)
 
-def _path() -> str:
-    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
+def _path(char_id: str) -> str:
+    """
+    PATCH: folder TERPISAH per karakter — state/{char_id}/working_memory.bin
+    — bukan lagi 1 file flat state/working_memory.bin dibagi semua karakter.
+
+    Root cause bug yang difix: sebelumnya load(user_id) TIDAK tahu karakter
+    mana yang aktif, jadi kalau user_id yang sama ngobrol sama karakter A
+    lalu pindah ke karakter B, working memory karakter A (goal, last_action,
+    short_context, dst) ikut kebawa/ke-load lagi di sesi karakter B —
+    ke-lihat jelas di log: ctx masih nyebut karakter lama padahal sudah
+    switch karakter.
+    """
+    d = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "state", _safe_char_id(char_id),
+    )
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, _FILE)
 
-def _read_all() -> Dict[str, Dict]:
-    p = _path()
+def _safe_char_id(char_id: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", str(char_id or "_default"))[:64]
+
+def _read_all(char_id: str) -> Dict[str, Dict]:
+    p = _path(char_id)
     if not os.path.exists(p): return {}
     try:
         with open(p, "rb") as f:
@@ -62,8 +78,8 @@ def _read_all() -> Dict[str, Dict]:
         return out
     except Exception: return {}
 
-def _write_all(data: Dict[str, Dict]):
-    p = _path()
+def _write_all(char_id: str, data: Dict[str, Dict]):
+    p = _path(char_id)
     items = list(data.values())
     payloads = []
     for rec in items:
@@ -87,6 +103,7 @@ def _write_all(data: Dict[str, Dict]):
 @dataclass
 class WorkingMemory:
     user_id:         str  = ""
+    char_id:         str  = ""          # PATCH: karakter aktif pemilik memory ini
     current_goal:    str  = ""          # "buat project folder", "rencanakan liburan"
     last_action:     str  = ""          # aksi terakhir ("cloud_save", "weather_check")
     last_tool:       str  = ""
@@ -142,25 +159,38 @@ class WorkingMemory:
         return WorkingMemory(**{k: v for k, v in d.items() if k in WorkingMemory.__dataclass_fields__})
 
 
-def load(user_id: str) -> WorkingMemory:
-    raw = _read_all().get(user_id)
-    if raw is None: return WorkingMemory(user_id=user_id, updated_ts=int(time.time()))
-    try:    return WorkingMemory.from_dict(raw)
-    except: return WorkingMemory(user_id=user_id, updated_ts=int(time.time()))
+def load(user_id: str, char_id: str) -> WorkingMemory:
+    """
+    PATCH: char_id WAJIB — working memory sekarang di-load dari folder
+    milik karakter itu sendiri (state/{char_id}/working_memory.bin), jadi
+    switch karakter untuk user_id yang sama TIDAK bakal ke-bawa data
+    karakter lain lagi.
+    """
+    raw = _read_all(char_id).get(user_id)
+    if raw is None:
+        return WorkingMemory(user_id=user_id, char_id=char_id, updated_ts=int(time.time()))
+    try:
+        wm = WorkingMemory.from_dict(raw)
+        wm.char_id = char_id  # jaga-jaga record lama (pra-patch) belum punya char_id
+        return wm
+    except Exception:
+        return WorkingMemory(user_id=user_id, char_id=char_id, updated_ts=int(time.time()))
 
 def save(wm: WorkingMemory):
     wm.updated_ts = int(time.time())
-    data = _read_all()
+    data = _read_all(wm.char_id)
     data[wm.user_id] = wm.to_dict()
-    _write_all(data)
+    _write_all(wm.char_id, data)
 
-def clear(user_id: str):
-    data = _read_all()
-    if user_id in data: del data[user_id]; _write_all(data)
+def clear(user_id: str, char_id: str):
+    data = _read_all(char_id)
+    if user_id in data:
+        del data[user_id]
+        _write_all(char_id, data)
 
-def update(user_id: str, **kwargs) -> WorkingMemory:
+def update(user_id: str, char_id: str, **kwargs) -> WorkingMemory:
     """Convenience: load → update fields → save → return."""
-    wm = load(user_id)
+    wm = load(user_id, char_id)
     for k, v in kwargs.items():
         if hasattr(wm, k): setattr(wm, k, v)
     save(wm)

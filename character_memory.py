@@ -537,6 +537,10 @@ _FIELD_KEYWORDS: Dict[str, tuple] = {
     "personality": ("sifat", "kepribadian", "karaktermu", "personality"),
     "backstory":   ("masa lalu", "latar belakang", "cerita hidup", "backstory", "bio"),
     "wants":       ("keinginan", "cita-cita", "mau apa", "goals", "impian"),
+    "custom_facts": (
+        "yang tadi", "yang barusan", "yang kamu bilang", "yang kamu certain",
+        "yang kamu ceritakan", "tadi kamu bilang", "tadi cerita", "certain tadi",
+    ),
 }
 
 def guess_field(text: str) -> Optional[str]:
@@ -608,7 +612,8 @@ def resolve_relevant_fields(
     if guessed:
         has_value = (
             (guessed == "wants" and cm.wants)
-            or (guessed != "wants" and cm.attributes.get(guessed) not in (None, "", [], {}))
+            or (guessed == "custom_facts" and cm.custom_facts)
+            or (guessed not in ("wants", "custom_facts") and cm.attributes.get(guessed) not in (None, "", [], {}))
         )
         if has_value:
             _log(f"  [CHARMEM] tier1 keyword match → field={guessed}")

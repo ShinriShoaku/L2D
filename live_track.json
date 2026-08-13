@@ -1,20 +1,35 @@
 {
   "chatters": {
-    "Shinri": 5,
-    "ฅ ネクサス ฅ ❄️": 13,
-    "𝓥𝓲𝓻𝓪𝓷𝓲𝓪": 5,
-    "Lochan": 3
+    "Shinri": 6,
+    "MAR$EL_TH€_SCH∆LE": 7,
+    "🥉Kakarotツ": 35,
+    "Aether [Kuro]": 1,
+    "Sussybaka": 3,
+    "𝓥𝓲𝓻𝓪𝓷𝓲𝓪": 2
   },
-  "likers": {},
+  "likers": {
+    "nasa": 2,
+    "Sussybaka": 13,
+    "Aether [Kuro]": 2,
+    "MAR$EL_TH€_SCH∆LE": 8
+  },
   "sharers": [],
   "gifters": {
-    "Lochan": [
+    "Aether [Kuro]": [
+      {
+        "gift": "Heart Me",
+        "count": 1
+      }
+    ],
+    "🥉Kakarotツ": [
       {
         "gift": "Heart Me",
         "count": 1
       }
     ]
   },
-  "followers": [],
-  "start_ts": "2026-07-25T08:28:48.016185+00:00"
+  "followers": [
+    "🥉Kakarotツ"
+  ],
+  "start_ts": "2026-08-13T07:48:56.597117+00:00"
 }

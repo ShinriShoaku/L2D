@@ -126,7 +126,7 @@ def _dispatch_reflection(
     # ── Working Memory ────────────────────────────────────────────────────────
     wm_update = result.get("working_memory", {})
     if wm_update:
-        wm = wm_mod.load(user_id)
+        wm = wm_mod.load(user_id, char_id)
         if wm_update.get("current_goal"):  wm.current_goal   = wm_update["current_goal"]
         if wm_update.get("last_action"):   wm.last_action    = wm_update["last_action"]
         if wm_update.get("awaiting_reply"): wm.awaiting_reply = wm_update["awaiting_reply"]
@@ -161,7 +161,7 @@ def _dispatch_reflection(
     rm_mod.save(rm)
 
     # ── Long Memory ───────────────────────────────────────────────────────────
-    lm = lm_mod.load(user_id)
+    lm = lm_mod.load(user_id, char_id)
     exp = result.get("experience", {})
     if exp.get("title"):
         lm.add_experience(

@@ -10,7 +10,7 @@ Persist: state/long_memory.bin — per user_id.
 Semua entry punya timestamp sehingga bisa di-sort kronologis.
 """
 from __future__ import annotations
-import hashlib, os, struct, time
+import hashlib, os, re, struct, time
 from dataclasses import dataclass, field, asdict
 from typing import Dict, List, Optional
 
@@ -31,13 +31,21 @@ _L_FMT  = ">I";    _L_SZ  = struct.calcsize(_L_FMT)
 _MAX_EXP  = 200   # max experience entries per user
 _MAX_SUM  = 50    # max summary entries per user
 
-def _path() -> str:
-    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "state")
+def _safe_char_id(char_id: str) -> str:
+    return re.sub(r"[^a-zA-Z0-9_\-]", "_", str(char_id or "_default"))[:64]
+
+def _path(char_id: str) -> str:
+    """PATCH: folder terpisah per karakter — state/{char_id}/long_memory.bin.
+    Sama seperti working_memory.py, mencegah pengalaman/summary karakter A
+    ke-load lagi di sesi karakter B untuk user_id yang sama."""
+    d = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "state", _safe_char_id(char_id),
+    )
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, _FILE)
 
-def _read_all() -> Dict[str, Dict]:
-    p = _path()
+def _read_all(char_id: str) -> Dict[str, Dict]:
+    p = _path(char_id)
     if not os.path.exists(p): return {}
     try:
         with open(p, "rb") as f:
@@ -56,8 +64,8 @@ def _read_all() -> Dict[str, Dict]:
         return out
     except Exception: return {}
 
-def _write_all(data: Dict[str, Dict]):
-    p = _path(); items = list(data.values())
+def _write_all(char_id: str, data: Dict[str, Dict]):
+    p = _path(char_id); items = list(data.values())
     payloads = [None]*len(items)
     for i, r in enumerate(items):
         try: payloads[i] = _dumps(r)
@@ -96,6 +104,7 @@ class ConversationSummary:
 @dataclass
 class LongMemory:
     user_id:      str  = ""
+    char_id:      str  = ""          # PATCH: karakter aktif pemilik memory ini
     experiences:  List[Dict] = field(default_factory=list)
     summaries:    List[Dict] = field(default_factory=list)
     milestones:   List[str]  = field(default_factory=list)
@@ -163,23 +172,33 @@ class LongMemory:
 
     @staticmethod
     def from_dict(d: Dict) -> "LongMemory":
-        lm = LongMemory(user_id=d.get("user_id",""), updated_ts=d.get("updated_ts",0))
+        lm = LongMemory(
+            user_id=d.get("user_id",""), char_id=d.get("char_id",""),
+            updated_ts=d.get("updated_ts",0),
+        )
         lm.experiences = d.get("experiences", [])
         lm.summaries   = d.get("summaries", [])
         lm.milestones  = d.get("milestones", [])
         return lm
 
 
-def load(user_id: str) -> LongMemory:
-    raw = _read_all().get(user_id)
-    if raw is None: return LongMemory(user_id=user_id, updated_ts=int(time.time()))
-    try:    return LongMemory.from_dict(raw)
-    except: return LongMemory(user_id=user_id)
+def load(user_id: str, char_id: str) -> LongMemory:
+    """PATCH: char_id WAJIB — lihat catatan di _path(). Mencegah pengalaman/
+    summary karakter lain ke-load lagi saat user pindah karakter."""
+    raw = _read_all(char_id).get(user_id)
+    if raw is None:
+        return LongMemory(user_id=user_id, char_id=char_id, updated_ts=int(time.time()))
+    try:
+        lm = LongMemory.from_dict(raw)
+        lm.char_id = char_id  # jaga-jaga record lama (pra-patch) belum punya char_id
+        return lm
+    except Exception:
+        return LongMemory(user_id=user_id, char_id=char_id)
 
 def save(lm: LongMemory):
     lm.updated_ts = int(time.time())
-    data = _read_all(); data[lm.user_id] = lm.to_dict(); _write_all(data)
+    data = _read_all(lm.char_id); data[lm.user_id] = lm.to_dict(); _write_all(lm.char_id, data)
 
-def clear(user_id: str):
-    data = _read_all()
-    if user_id in data: del data[user_id]; _write_all(data)
+def clear(user_id: str, char_id: str):
+    data = _read_all(char_id)
+    if user_id in data: del data[user_id]; _write_all(char_id, data)

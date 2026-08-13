@@ -83,7 +83,7 @@ GIFT_TRIGGER_MAX = 5
 
 # Live2D
 L2D_MODEL_ID  = 0
-L2D_MODEL_MAP = 0
+L2D_MODEL_MAP = 1
 
 # Queue
 MAX_QUEUE_SIZE    = 10
@@ -462,24 +462,22 @@ class ResponsePipeline:
                 """
                 Dipanggil main.py setiap 1 kalimat selesai ditranslasi.
 
-                Strategi trigger play:
-                - total <= 3 : JANGAN trigger di sini. Tunggu semua selesai,
-                               trigger dilakukan di blok try setelah sentinel dikirim.
-                               (Segmen sedikit = translate cepat, tidak perlu streaming)
-                - total > 3  : Trigger setelah segmen ke-3 masuk queue. Segmen 1-3
-                               sudah siap diplay, sisanya menyusul ke queue sambil
-                               _play_seq_streaming berjalan. Prefetch TTS di player
-                               memastikan tidak ada jeda antar segmen.
+                PATCH: dulu ada gate "total > 3" — respons pendek (2-3
+                kalimat, KASUS PALING SERING karena mode nano/lite) TIDAK
+                PERNAH memicu streaming di sini, jadi tetap nunggu SEMUA
+                kalimat selesai diterjemahkan dulu baru mulai main (sama
+                saja seperti tanpa streaming). Sekarang trigger SEGERA
+                begitu kalimat PERTAMA masuk queue, apa pun jumlah total-nya
+                — kalimat berikutnya nyusul diterjemahkan di thread ini
+                (translate), SEMENTARA kalimat pertama sudah mulai di-fetch
+                TTS + diputar di _play_seq_streaming (thread player) — 2
+                thread paralel, bukan nunggu satu-satu berurutan.
                 """
                 seg_q.put(seg)
                 collected_count[0] += 1
-                # Pakai anim segmen pertama sebagai expression awal
-                if collected_count[0] == 1:
-                    expr_holder[0] = seg.get("anim", "neutral")
-
-                # Hanya trigger early jika total > 3 dan sudah ada 3 segmen
-                if total > 3 and collected_count[0] >= 3 and not play_triggered[0]:
+                if collected_count[0] == 1 and not play_triggered[0]:
                     play_triggered[0] = True
+                    expr_holder[0] = seg.get("anim", "neutral")
                     with self._slot_lock:
                         if self._slot is None:
                             self._slot = {

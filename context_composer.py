@@ -66,8 +66,8 @@ _BUDGET: Dict[str, int] = {
 # dipakai untuk EMOTIONAL/ROLEPLAY yang butuh konteks kaya).
 _CORE_IDENTITY_FIELDS: Dict[str, list] = {
     "nano":   ["full_name"],
-    "lite":   ["full_name", "personality"],
-    "normal": ["full_name", "personality", "likes"],
+    "lite":   ["full_name", "personality", "custom_facts"],
+    "normal": ["full_name", "personality", "likes", "custom_facts"],
 }
 
 
@@ -221,7 +221,7 @@ def compose(
     # Masuk kecuali nano — kecuali analyzer eksplisit menandai need_memory=True
     # (chat menyinggung goal/aksi/data USER yang sedang berjalan).
     if mode != "nano" or need_memory:
-        wm = wm_mod.load(user_id)
+        wm = wm_mod.load(user_id, char_id)
         wm_str = wm.summary()
         if wm_str != "(empty)":
             result["working_memory"] = wm_str
@@ -253,7 +253,7 @@ def compose(
     # ── Long Memory ────────────────────────────────────────────────────────────
     # Hanya deep, atau EMOTIONAL/ROLEPLAY (butuh konteks panjang)
     if mode == "deep" or state.frame in ("EMOTIONAL", "ROLEPLAY"):
-        lm = lm_mod.load(user_id)
+        lm = lm_mod.load(user_id, char_id)
         lm_str = lm.summary_for_context(topic_hint=state.topic)
         if lm_str != "(belum ada long memory)":
             result["long_memory"] = lm_str

@@ -266,7 +266,7 @@ def clear_state(user_id: str) -> bool:
 _SELF_MEMORY_FIELDS = {
     "full_name", "birthday", "zodiac", "age", "personality",
     "likes", "dislikes", "hobbies", "fears", "backstory",
-    "wants", "general",
+    "wants", "custom_facts", "general",
 }
 
 _ANALYZER_SYS = """\
@@ -303,7 +303,7 @@ self_memory_field (HANYA diisi kalau need_self_memory=true — hemat token,
 supaya composer tidak perlu kirim SELURUH profil karakter, cukup 1 field):
   Pilih SATU yang paling cocok dengan pertanyaan:
     full_name | birthday | zodiac | age | personality | likes | dislikes |
-    hobbies | fears | backstory | wants | general
+    hobbies | fears | backstory | wants | custom_facts | general
   - "birthday"    = tanggal lahir / ulang tahun
   - "zodiac"      = zodiak / rasi bintang
   - "likes"       = kesukaan / hal yang disukai
@@ -313,6 +313,11 @@ supaya composer tidak perlu kirim SELURUH profil karakter, cukup 1 field):
   - "personality" = sifat / kepribadian
   - "backstory"   = masa lalu / latar belakang cerita
   - "wants"       = keinginan / cita-cita / goals
+  - "custom_facts" = pertanyaan MERUJUK ke sesuatu yang SPESIFIK pernah
+                     disebut/diceritakan karakter sebelumnya (termasuk pas
+                     idle/banter, bukan cuma dari chat) — bukan trait tetap.
+                     Contoh: "gear yang tadi aus itu apa?", "jadi beneran
+                     beli torque wrench-nya?", "cerita yang tadi soal apa?"
   - "general"     = pertanyaan identitas KARAKTER yang luas/tidak spesifik,
                      atau kalau tidak yakin field mana yang cocok
   Kalau need_self_memory=false, isi dengan string kosong "".
