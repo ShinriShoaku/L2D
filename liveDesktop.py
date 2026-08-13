@@ -39,7 +39,7 @@ _main.DEBUG = False
 # ─── TTS CONFIG ───────────────────────────────────────────────────────────────
 
 TTS_SERVER_URL = "http://localhost:7861/api/tts_fast"
-TTS_MODEL      = "koharu"
+TTS_MODEL      = "kokoro"
 TTS_PARAMS     = {
     "language":      "Japanese",
     "noise_scale":   0.6,

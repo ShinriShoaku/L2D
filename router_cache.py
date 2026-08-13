@@ -52,9 +52,13 @@ _LEN_SZ  = struct.calcsize(_LEN_FMT)
 
 CONFIRM_SYS = (
     "Jawab HANYA: yes atau no\n"
-    "yes = kedua kalimat meminta HAL YANG SAMA (tool/aksi identik)\n"
-    "no  = berbeda tujuan atau butuh tool berbeda\n"
-    "Abaikan perbedaan nama, angka, atau gaya bahasa."
+    "yes = kedua kalimat meminta HAL YANG SAMA (tool/aksi identik) DAN kalau ada\n"
+    "      angka/tanggal/waktu spesifik di salah satu, itu TIDAK mengubah jawaban\n"
+    "      yang akan didapat (mis. sama-sama \"jumlah subscriber\" tanpa angka target)\n"
+    "no  = tujuan berbeda, butuh tool berbeda, ATAU salah satu menyebut\n"
+    "      tanggal/waktu/angka SPESIFIK yang membuat jawabannya bisa beda\n"
+    "      (mis. \"cek tanggal 13\" vs \"cek lagi\" → beda, jangan disamakan)\n"
+    "Abaikan cuma perbedaan nama orang atau gaya bahasa, BUKAN angka/tanggal/waktu."
 )
 
 _STOP = {
@@ -190,14 +194,39 @@ _CACHE_BLACKLIST = {
     "cs_write", "cs_read", "cs_list", "cs_search", "cs_delete",
 }
 
-def save(user_input: str, calls: List[Dict], category: str = ""):
+# PATC v8 (bug: stale realtime data ke-cache): daripada blacklist per NAMA
+# tool doang (gampang ketinggalan — kasus nyata: "gcg" dipanggil dengan
+# argumen date="2023-08-13", ke-cache, lalu di-replay mentah2 buat query
+# jauh di masa depan), deteksi dari ISI ARGUMEN. Call APAPUN yang salah
+# satu key argumennya "berbau waktu" otomatis TIDAK boleh di-cache —
+# argumen semacam ini pasti basi begitu di-replay di luar momen aslinya.
+_TIME_SENSITIVE_ARG_KEYS = {
+    "date", "time", "tanggal", "waktu", "jam", "tgl", "datetime",
+    "timestamp", "hari", "bulan", "tahun", "year", "month", "day",
+}
+
+def _has_time_sensitive_args(call: Dict) -> bool:
+    a = call.get("a", {}) or {}
+    return any(str(k).lower() in _TIME_SENSITIVE_ARG_KEYS for k in a.keys())
+
+def save(user_input: str, calls: List[Dict], category: str = "", dbg=None):
     if not calls: return
 
-    # Hanya simpan jika minimal 1 call bukan dari blacklist
-    # Artinya: ada tool yang benar-benar di-trigger oleh intent user
-    meaningful = [c for c in calls if c.get("f") not in _CACHE_BLACKLIST]
+    def _log(msg: str):
+        if dbg: dbg.line(msg)
+
+    # Hanya simpan jika minimal 1 call bukan dari blacklist DAN tidak
+    # punya argumen realtime-sensitive (lihat _has_time_sensitive_args —
+    # argumen kayak date/time/tanggal pasti basi kalau di-replay nanti).
+    meaningful = [
+        c for c in calls
+        if c.get("f") not in _CACHE_BLACKLIST and not _has_time_sensitive_args(c)
+    ]
+    dropped_ts = [c for c in calls if c.get("f") not in _CACHE_BLACKLIST and _has_time_sensitive_args(c)]
+    if dropped_ts:
+        _log(f"  [CACHE] ⏭️  skip cache utk {[c['f'] for c in dropped_ts]} — argumen realtime-sensitive (date/time)")
     if not meaningful:
-        return   # semua tool adalah "context default" — tidak perlu di-cache
+        return   # semua tool adalah "context default" / realtime — tidak perlu di-cache
 
     # Simpan hanya calls yang meaningful (strip args kontekstual yg bisa basi)
     calls_clean = []
@@ -220,6 +249,9 @@ def _is_valid_entry(entry: Dict) -> bool:
     Validasi entry sebelum di-return dari lookup.
     Entry invalid jika:
     - Semua calls masuk blacklist (cs_*, gmos, grc, dst)
+    - Ada call dengan argumen realtime-sensitive (date/time/tanggal/dst) —
+      entry lama yang ke-cache SEBELUM fix ini juga ke-tangkap di sini,
+      jadi self-heal otomatis lewat purge_invalid() tanpa perlu migrasi manual.
     - cs_write dengan key/value kosong (entry corrupt dari sebelum fix)
     - Tidak ada calls sama sekali
     """
@@ -229,6 +261,8 @@ def _is_valid_entry(entry: Dict) -> bool:
     for c in calls:
         f = c.get("f", "")
         if f in _CACHE_BLACKLIST:
+            return False
+        if _has_time_sensitive_args(c):
             return False
         # cs_write khusus: key dan value harus ada
         if f == "cs_write":

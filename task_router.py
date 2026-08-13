@@ -1046,6 +1046,20 @@ def precheck(
     # ══════════════════════════════════════════════════════════════════════
     # GATE 1 — Tiny LLM intent gate
     # ══════════════════════════════════════════════════════════════════════
+    # PATCH v7 revert: SEMPAT dicoba fan-out gate1+L1 paralel lewat shared
+    # pool (concurrency.get_executor()) di sini. Ternyata BERMASALAH begitu
+    # jalan lewat alur asli (full_generate() di main.py) — precheck() ITU
+    # SENDIRI sudah dipanggil sebagai task di dalam pool yang sama
+    # (dibarengin dengan _cs_analyze, lihat main.py full_generate() PATCH
+    # v5), jadi kedua slot MAX_PARALLEL_LLM sudah penuh SEBELUM precheck()
+    # sempat nge-submit L1 sebagai task ke-3 — L1 jadi antre nunggu slot
+    # yang gak akan bebas (precheck() sendiri lagi nunggu hasilnya), jadi
+    # paralelismenya gak kepakai (worst case malah nunggu sampai timeout
+    # baru fallback). Paralelisme yang BENERAN efektif itu sudah ada di
+    # level LUAR (full_generate(): Analyzer || precheck — sudah ada dari
+    # PATCH v5 lama), jadi di SINI baliknya sequential biasa saja — jangan
+    # nested submit ke pool yang sama dari dalam task yang sudah jalan
+    # di pool itu.
     _log("\n── GATE 1: INTENT ──────────────────────────────────────────")
     g1 = gate1(user_input, llm_call)
     _log(f"  [GATE 1] type={g1['type']} complexity={g1['complexity']}")
@@ -1223,7 +1237,7 @@ def execute_categories(
         for c in final_calls:
             a_clean = {k: v for k, v in c.get("a", {}).items() if k != "id"}
             calls_to_cache.append({"f": c["f"], "a": a_clean})
-        _cache_save(user_input, calls_to_cache)
+        _cache_save(user_input, calls_to_cache, dbg=dbg)
         _log(f"  [CACHE] 💾 saved — {[c['f'] for c in calls_to_cache]}")
 
     return final_calls

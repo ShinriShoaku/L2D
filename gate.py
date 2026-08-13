@@ -212,9 +212,40 @@ _DG_FAMILY_MAP = {
 }
 
 
-def decision_graph(text: str, llm_call, has_custom: bool = False, dbg=None) -> List[str]:
+def _decision_graph_l1_call(text: str, llm_call) -> str:
+    """
+    L1 saja (internal/external) — di-extract dari decision_graph() supaya bisa
+    di-submit ke thread pool SECARA TERPISAH dari gate1(), dijalankan paralel
+    (lihat concurrency.py + task_router.precheck()). Prompt & parsing SAMA
+    PERSIS dengan yang dulu inline di decision_graph() — tidak ada perubahan
+    isi/format apapun, jadi akurasi tidak berubah, cuma cara eksekusinya.
+    """
+    try:
+        resp = llm_call("react",
+            messages=[{"role": "system", "content": _DG_L1_SYS},
+                      {"role": "user",   "content": text}],
+            temperature=0.0, max_tokens=15)
+        return (resp.choices[0].message.content or "").strip().lower()
+    except Exception:
+        return ""
+
+
+def decision_graph(
+    text: str,
+    llm_call,
+    has_custom: bool = False,
+    dbg=None,
+    known_l1: Optional[str] = None,
+) -> List[str]:
     """
     2-level decision graph → list kategori untuk Pass B+C.
+
+    known_l1: hasil _decision_graph_l1_call() yang SUDAH dihitung sebelumnya
+    (mis. dijalankan paralel dengan gate1() lewat thread pool — lihat
+    precheck() di task_router.py). Kalau di-isi, L1 call di-skip (langsung
+    ke L2), TANPA mengubah prompt/logic apapun — murni menghindari 1 network
+    round-trip yang REDUNDAN kalau hasilnya sudah ada di tangan.
+    Kalau None, jalan seperti versi lama (L1 dipanggil sendiri di sini).
     """
     def _log(msg):
         if dbg: dbg.line(msg)
@@ -229,8 +260,12 @@ def decision_graph(text: str, llm_call, has_custom: bool = False, dbg=None) -> L
         except Exception:
             return ""
 
-    l1_raw = _call(_DG_L1_SYS)
-    _log(f"  [DG L1] raw={l1_raw!r}")
+    if known_l1 is not None:
+        l1_raw = known_l1
+        _log(f"  [DG L1] (dari parallel fan-out) raw={l1_raw!r}")
+    else:
+        l1_raw = _decision_graph_l1_call(text, llm_call)
+        _log(f"  [DG L1] raw={l1_raw!r}")
 
     if "internal" in l1_raw:
         l2_raw = _call(_DG_L2_INTERNAL_SYS)

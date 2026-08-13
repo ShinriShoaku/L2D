@@ -1,32 +1,36 @@
 [
   {
     "role": "assistant",
-    "content": "Aku... aku coba bantu, tapi jangan terlalu ribet ya, aku juga masih pemula."
-  },
-  {
-    "role": "assistant",
-    "content": "Um... kalau kamu ada pertanyaan, aku bakal usahakan jawab, kok. Aku... aku bisa."
-  },
-  {
-    "role": "assistant",
-    "content": "E-eh... tapi kalau soalnya terlalu rumit, mungkin aku bakal bingung juga, jadi jangan khawatir, kok."
-  },
-  {
-    "role": "assistant",
-    "content": "Um... kalau kamu mau tanya, aku usahakan jawab, tapi kalau nggak bisa, ya udah, aku bilang aja, ya."
-  },
-  {
-    "role": "assistant",
-    "content": "E-eh... aku juga suka baca buku teknologi, jadi kalau ada soal yang agak susah, mungkin aku bisa coba cari tahu."
+    "content": "A-ah... maaf, Alfa sepertinya nggak bisa jawab saat ini..."
   },
   {
     "role": "user",
-    "content": "Shinri: tar ganti ke mailin",
-    "username": "Shinri",
-    "user_id": "shinri_shoaku"
+    "content": "alfa?",
+    "username": "shinri-sensei",
+    "user_id": "local"
   },
   {
     "role": "assistant",
-    "content": "E-eh... oke, nanti aku kirim email ya. Jangan lupa cek inbox, Shinri."
+    "content": "Um... shinri-sensei? A-ah... maafkan aku, aku sedang berpikir tentang something... Aku... mau tanya, yang tidak disukai liana apa saja? Tar aku simpan di note."
+  },
+  {
+    "role": "user",
+    "content": "test",
+    "username": "shinri-sensei",
+    "user_id": "local"
+  },
+  {
+    "role": "assistant",
+    "content": "E-eh... um... shinri-sensei? Apa yang bisa saya bantu?"
+  },
+  {
+    "role": "user",
+    "content": "uhui",
+    "username": "shinri-sensei",
+    "user_id": "local"
+  },
+  {
+    "role": "assistant",
+    "content": "A-ah... maaf, Alfa sepertinya nggak bisa jawab saat ini..."
   }
 ]
