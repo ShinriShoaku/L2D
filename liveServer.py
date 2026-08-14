@@ -78,12 +78,12 @@ DEDUP_WINDOW_SEC = 4.0
 BATCH_WINDOW_SEC = 2.5
 
 # Gift trigger
-GIFT_TRIGGER_MIN = 3
+GIFT_TRIGGER_MIN = 2
 GIFT_TRIGGER_MAX = 5
 
 # Live2D
 L2D_MODEL_ID  = 0
-L2D_MODEL_MAP = 1
+L2D_MODEL_MAP = 0
 
 # Queue
 MAX_QUEUE_SIZE    = 10
@@ -615,7 +615,7 @@ class ResponsePipeline:
         self.l2d.show_chat_log(original_chat)
 
         if self._banter:
-            if not self._banter.wait_interrupt_done(timeout=8.0):
+            if not self._banter.wait_interrupt_done(timeout=2.0):
                 print("⚠️ [PIPELINE] Timeout interrupt phrase, lanjut...")
 
         with self._q_lock:

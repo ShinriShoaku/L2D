@@ -4,9 +4,18 @@
   "info_user": [],
   "romance_status": "",
   "romance_points": 0,
-  "note": [],
+  "note": [
+    {
+      "text": "Rudy AI terkenal dengan kepribadian buruk",
+      "ts": "2026-08-13T15:53:23.975896+00:00"
+    },
+    {
+      "text": "Rudy AI terkenal dengan kepribadian buruknya",
+      "ts": "2026-08-13T15:53:26.248071+00:00"
+    }
+  ],
   "gift_history": [],
   "vip_user": false,
-  "last_chat_timestamp": "Kamis, 13 Agustus 2026, 07:38 AM",
-  "_last_chat_iso": "2026-08-13T07:38:19.729504+00:00"
+  "last_chat_timestamp": "Kamis, 13 Agustus 2026, 04:03 PM",
+  "_last_chat_iso": "2026-08-13T16:03:14.300694+00:00"
 }
